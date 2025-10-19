@@ -19,6 +19,7 @@ const Processing = () => {
     const audioUrl = sessionStorage.getItem("audioUrl");
     const submissionId = sessionStorage.getItem("submissionId");
     const teacherIdFromSession = sessionStorage.getItem("teacherId");
+    const className = sessionStorage.getItem("className");
 
     if (!audioUrl || !submissionId) {
       navigate("/capture");
@@ -56,10 +57,11 @@ const Processing = () => {
         console.log("Sending to Make.com:", {
           audio_url: audioUrl,
           ID_Enseignant: teacherUUID,
-          ID_Utilisateur: learnerUUID
+          ID_Utilisateur: learnerUUID,
+          Classe_Nom: className
         });
 
-        // Real POST to Make.com with UUIDs
+        // Real POST to Make.com with UUIDs and class name
         const response = await fetch(makeWebhookUrl, {
           method: "POST",
           headers: {
@@ -70,6 +72,7 @@ const Processing = () => {
             audio_url: audioUrl,
             ID_Enseignant: teacherUUID || "default",
             ID_Utilisateur: learnerUUID,
+            Classe_Nom: className || "Non spécifiée",
           }),
         });
         

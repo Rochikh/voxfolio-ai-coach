@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    const { recordId, teacherId } = await req.json();
+    const { recordId, teacherId, className } = await req.json();
 
     if (!AIRTABLE_TOKEN) {
       console.error('AIRTABLE_PERSONAL_ACCESS_TOKEN not configured');
@@ -70,9 +70,14 @@ serve(async (req) => {
 
     // Case 2: Fetch all records for a teacher
     if (teacherId) {
-      console.log(`Fetching portfolios for teacher: ${teacherId}`);
+      console.log(`Fetching portfolios for teacher: ${teacherId}`, className ? `and class: ${className}` : '');
       
-      const filterFormula = `{ID_Enseignant}='${teacherId}'`;
+      // Build filter formula with optional class filter
+      let filterFormula = `{ID_Enseignant}='${teacherId}'`;
+      if (className) {
+        filterFormula = `AND(${filterFormula},{Classe_Nom}='${className}')`;
+      }
+      
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(filterFormula)}&sort[0][field]=Created&sort[0][direction]=desc`;
       
       const response = await fetch(url, {
@@ -99,6 +104,7 @@ serve(async (req) => {
         prenom: record.fields['Prénom'] || '',
         image: record.fields['image']?.[0]?.url || '',
         created: record.createdTime,
+        classe: record.fields['Classe_Nom'] || '',
       }));
 
       return new Response(

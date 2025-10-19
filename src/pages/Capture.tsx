@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Mic, Upload, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +13,7 @@ const Capture = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [className, setClassName] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -101,6 +104,11 @@ const Capture = () => {
       return;
     }
 
+    if (!className.trim()) {
+      toast.error("Veuillez entrer le nom de votre classe");
+      return;
+    }
+
     try {
       toast.info("Upload de votre audio en cours...");
 
@@ -133,9 +141,10 @@ const Capture = () => {
         throw new Error("URL de fichier manquante");
       }
 
-      // Store public URL in sessionStorage for processing page
+      // Store public URL and class name in sessionStorage for processing page
       sessionStorage.setItem("audioUrl", publicUrl);
       sessionStorage.setItem("submissionId", sessionId);
+      sessionStorage.setItem("className", className);
 
       toast.success("Audio uploadé avec succès!");
       navigate("/processing");
@@ -164,6 +173,19 @@ const Capture = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Class Name Input */}
+          <div className="space-y-2">
+            <Label htmlFor="className">Nom de votre classe</Label>
+            <Input
+              id="className"
+              type="text"
+              placeholder="Ex: TS2 - Maths, CAP Boulangerie B"
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
           {/* Recording Section */}
           <div className="flex flex-col items-center justify-center py-12 bg-muted/50 rounded-lg">
             {isRecording ? (
@@ -250,7 +272,7 @@ const Capture = () => {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!audioBlob}
+            disabled={!audioBlob || !className.trim()}
             size="lg"
             className="w-full bg-gradient-primary hover:opacity-90 shadow-primary"
           >

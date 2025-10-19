@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,12 +14,15 @@ interface PortfolioItem {
   image: string;
   prenom: string;
   created: string;
+  classe?: string;
 }
 
 const Showcase = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -33,19 +37,19 @@ const Showcase = () => {
     }
   }, [user, authLoading, navigate]);
 
-  const fetchPortfolios = async () => {
+  const fetchPortfolios = async (classFilter?: string) => {
     if (!user) return;
 
     try {
-      // Use the teacher's UUID from Lovable Cloud
       const teacherUUID = user.id;
 
-      console.log("Fetching portfolios for teacher UUID:", teacherUUID);
+      console.log("Fetching portfolios for teacher UUID:", teacherUUID, "Class filter:", classFilter);
 
-      // Call Edge Function to fetch portfolios from Airtable filtered by UUID
+      // Call Edge Function to fetch portfolios from Airtable filtered by UUID and optionally by class
       const { data, error } = await supabase.functions.invoke('fetch-airtable', {
         body: { 
-          teacherId: teacherUUID
+          teacherId: teacherUUID,
+          className: classFilter && classFilter !== "all" ? classFilter : undefined
         }
       });
 
@@ -55,9 +59,16 @@ const Showcase = () => {
         id: record.id,
         image: record.image || "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=400&fit=crop",
         prenom: record.prenom,
-        created: record.created
+        created: record.created,
+        classe: record.classe
       }));
 
+      // Extract unique classes from portfolios
+      const uniqueClasses = Array.from(
+        new Set(mappedPortfolios.map((p: PortfolioItem) => p.classe).filter(Boolean))
+      ) as string[];
+      
+      setClasses(uniqueClasses);
       setPortfolios(mappedPortfolios);
       setLoading(false);
     } catch (error) {
@@ -67,9 +78,18 @@ const Showcase = () => {
     }
   };
 
-  const filteredPortfolios = portfolios.filter((portfolio) =>
-    portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    if (selectedClass) {
+      fetchPortfolios(selectedClass);
+    }
+  }, [selectedClass]);
+
+  const filteredPortfolios = portfolios
+    .filter((portfolio) => {
+      const matchesSearch = portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesClass = selectedClass === "all" || portfolio.classe === selectedClass;
+      return matchesSearch && matchesClass;
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
@@ -98,6 +118,22 @@ const Showcase = () => {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Class Filter Tabs */}
+        {classes.length > 0 && (
+          <div className="mb-6">
+            <Tabs value={selectedClass} onValueChange={setSelectedClass}>
+              <TabsList className="w-full justify-start overflow-x-auto">
+                <TabsTrigger value="all">Toutes les classes</TabsTrigger>
+                {classes.map((classe) => (
+                  <TabsTrigger key={classe} value={classe}>
+                    {classe}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </div>
+        )}
+
         {/* Search */}
         <div className="mb-8">
           <div className="relative max-w-md">
