@@ -31,7 +31,7 @@ interface Stats {
 }
 
 const Admin = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([]);
@@ -46,7 +46,7 @@ const Admin = () => {
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
 
     // Vérification d'accès
     if (!user) {
@@ -59,7 +59,7 @@ const Admin = () => {
     }
 
     fetchData();
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     // Filtrage des utilisateurs
