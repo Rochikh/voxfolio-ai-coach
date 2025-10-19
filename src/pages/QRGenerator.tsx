@@ -2,11 +2,19 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/useAuth';
 import { Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { TeacherNav } from '@/components/TeacherNav';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Classe {
+  id: string;
+  nom: string;
+}
 
 export default function QRGenerator() {
   const navigate = useNavigate();
@@ -14,6 +22,9 @@ export default function QRGenerator() {
   const [qrUrl, setQrUrl] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [airtableTeacherId, setAirtableTeacherId] = useState('');
+  const [classes, setClasses] = useState<Classe[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [qrType, setQrType] = useState<'teacher' | 'class'>('teacher');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -22,30 +33,73 @@ export default function QRGenerator() {
     }
 
     if (user) {
-      generateQRCode();
+      loadClasses();
     }
   }, [user, loading, navigate]);
 
-  const generateQRCode = async () => {
+  const loadClasses = async () => {
     if (!user) return;
 
     try {
-      // Use the actual user UUID from Lovable Cloud
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, nom')
+        .eq('teacher_id', user.id)
+        .order('nom');
+
+      if (error) throw error;
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      toast.error('Erreur lors du chargement des classes');
+    }
+  };
+
+  const generateQRCode = async (type: 'teacher' | 'class' = 'teacher') => {
+    if (!user) return;
+
+    try {
       const teacherUUID = user.id;
       setAirtableTeacherId(teacherUUID);
 
-      // Generate unique session ID (this will be the learner's UUID)
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
 
-      // Generate QR code URL with teacher UUID
-      const url = `${window.location.origin}/capture?teacher=${teacherUUID}&session=${newSessionId}`;
-      setQrUrl(url);
+      let url = `${window.location.origin}/capture?teacher=${teacherUUID}&session=${newSessionId}`;
 
-      toast.success('QR Code généré avec UUID enseignant !');
+      if (type === 'class' && selectedClasses.length > 0) {
+        if (selectedClasses.length === 1) {
+          url += `&class=${selectedClasses[0]}`;
+        } else if (selectedClasses.length === classes.length) {
+          url += `&classes=all`;
+        } else {
+          url += `&classes=${selectedClasses.join(',')}`;
+        }
+      }
+
+      setQrUrl(url);
+      setQrType(type);
+
+      toast.success('QR Code généré !');
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error('Erreur lors de la génération du QR code');
+    }
+  };
+
+  const toggleClass = (classId: string) => {
+    setSelectedClasses(prev =>
+      prev.includes(classId)
+        ? prev.filter(id => id !== classId)
+        : [...prev, classId]
+    );
+  };
+
+  const toggleAllClasses = () => {
+    if (selectedClasses.length === classes.length) {
+      setSelectedClasses([]);
+    } else {
+      setSelectedClasses(classes.map(c => c.id));
     }
   };
 
@@ -65,7 +119,20 @@ export default function QRGenerator() {
       
       const pngFile = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
-      downloadLink.download = `qr-code-session-${sessionId.slice(0, 8)}.png`;
+      
+      let filename = 'qr-code.png';
+      if (qrType === 'teacher') {
+        filename = 'qr-enseignant.png';
+      } else if (selectedClasses.length === 1) {
+        const classe = classes.find(c => c.id === selectedClasses[0]);
+        filename = `qr-classe-${classe?.nom || 'unknown'}.png`;
+      } else if (selectedClasses.length === classes.length) {
+        filename = 'qr-toutes-classes.png';
+      } else {
+        filename = 'qr-classes-multiples.png';
+      }
+      
+      downloadLink.download = filename;
       downloadLink.href = pngFile;
       downloadLink.click();
       
@@ -87,7 +154,7 @@ export default function QRGenerator() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <TeacherNav />
 
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Générateur de QR Code</h1>
           <p className="text-muted-foreground">
@@ -95,89 +162,176 @@ export default function QRGenerator() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>QR Code de Session</CardTitle>
-              <CardDescription>
-                Scannez ce code pour accéder à la capture audio
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-4">
-              {qrUrl ? (
-                <>
-                  <div className="p-4 bg-white rounded-lg">
-                    <QRCodeSVG
-                      id="qr-code"
-                      value={qrUrl}
-                      size={256}
-                      level="H"
-                      includeMargin={true}
-                    />
-                  </div>
-                  <div className="flex gap-2 w-full">
-                    <Button onClick={downloadQRCode} className="flex-1" variant="outline">
+        <Tabs defaultValue="teacher" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="teacher">QR Code Enseignant</TabsTrigger>
+            <TabsTrigger value="class">QR Code Classe(s)</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="teacher" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>QR Code Enseignant Simple</CardTitle>
+                <CardDescription>
+                  Vos élèves choisiront leur classe après avoir scanné le QR code
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  onClick={() => generateQRCode('teacher')} 
+                  className="w-full"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Générer QR Code Enseignant
+                </Button>
+
+                {qrUrl && qrType === 'teacher' && (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white rounded-lg flex justify-center">
+                      <QRCodeSVG
+                        id="qr-code"
+                        value={qrUrl}
+                        size={256}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
+                    <Button onClick={downloadQRCode} className="w-full" variant="outline">
                       <Download className="mr-2 h-4 w-4" />
                       Télécharger
                     </Button>
-                    <Button onClick={generateQRCode} className="flex-1" variant="outline">
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Régénérer
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="class" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>QR Code pour Classe(s) Spécifique(s)</CardTitle>
+                <CardDescription>
+                  Sélectionnez les classes qui pourront utiliser ce QR code
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {classes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Vous n'avez pas encore de classes.</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => navigate('/classes')}
+                      className="mt-2"
+                    >
+                      Créer une classe
                     </Button>
                   </div>
-                </>
-              ) : (
-                <Button onClick={generateQRCode} className="w-full">
-                  Générer un QR Code
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 pb-2 border-b">
+                        <Checkbox
+                          id="all-classes"
+                          checked={selectedClasses.length === classes.length}
+                          onCheckedChange={toggleAllClasses}
+                        />
+                        <label
+                          htmlFor="all-classes"
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          Toutes mes classes
+                        </label>
+                      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations</CardTitle>
-              <CardDescription>
-                Détails de la session
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  UUID Enseignant (Lovable Cloud)
-                </p>
-                <p className="text-xs font-mono bg-muted p-2 rounded break-all">
-                  {airtableTeacherId || 'Non configuré'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  UUID Apprenant (Session)
-                </p>
-                <p className="text-xs font-mono bg-muted p-2 rounded break-all">
-                  {sessionId || 'Aucune session'}
-                </p>
-              </div>
+                      {classes.map((classe) => (
+                        <div key={classe.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={classe.id}
+                            checked={selectedClasses.includes(classe.id)}
+                            onCheckedChange={() => toggleClass(classe.id)}
+                          />
+                          <label
+                            htmlFor={classe.id}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {classe.nom}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Button 
+                      onClick={() => generateQRCode('class')} 
+                      className="w-full"
+                      disabled={selectedClasses.length === 0}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Générer QR Code pour {selectedClasses.length} classe{selectedClasses.length > 1 ? 's' : ''}
+                    </Button>
+
+                    {qrUrl && qrType === 'class' && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-lg flex justify-center">
+                          <QRCodeSVG
+                            id="qr-code"
+                            value={qrUrl}
+                            size={256}
+                            level="H"
+                            includeMargin={true}
+                          />
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <p className="text-sm font-medium mb-1">Classes sélectionnées :</p>
+                          <p className="text-xs text-muted-foreground">
+                            {selectedClasses.map(id => classes.find(c => c.id === id)?.nom).join(', ')}
+                          </p>
+                        </div>
+                        <Button onClick={downloadQRCode} className="w-full" variant="outline">
+                          <Download className="mr-2 h-4 w-4" />
+                          Télécharger
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Informations de Session</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                UUID Enseignant
+              </p>
+              <p className="text-xs font-mono bg-muted p-2 rounded break-all">
+                {airtableTeacherId || 'Non configuré'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1">
+                UUID Session
+              </p>
+              <p className="text-xs font-mono bg-muted p-2 rounded break-all">
+                {sessionId || 'Aucune session'}
+              </p>
+            </div>
+            {qrUrl && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">
                   URL de Capture
                 </p>
                 <p className="text-xs font-mono bg-muted p-2 rounded break-all">
-                  {qrUrl || 'Aucune URL'}
+                  {qrUrl}
                 </p>
               </div>
-              <div className="pt-4 border-t">
-                <h3 className="font-semibold mb-2">Instructions</h3>
-                <ol className="text-sm text-muted-foreground space-y-2">
-                  <li>1. Affichez le QR code sur un écran ou imprimez-le</li>
-                  <li>2. Les apprenants scannent le code avec leur smartphone</li>
-                  <li>3. Ils accèdent directement à la page de capture</li>
-                  <li>4. Leurs enregistrements seront automatiquement liés à votre classe</li>
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

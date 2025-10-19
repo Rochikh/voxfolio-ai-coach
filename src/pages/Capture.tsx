@@ -14,6 +14,11 @@ interface Teacher {
   nom: string;
 }
 
+interface Classe {
+  id: string;
+  nom: string;
+}
+
 const Capture = () => {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
@@ -22,6 +27,9 @@ const Capture = () => {
   const [selectedTeacherId, setSelectedTeacherId] = useState("");
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
+  const [classes, setClasses] = useState<Classe[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [lockedClass, setLockedClass] = useState<Classe | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -29,15 +37,27 @@ const Capture = () => {
   const MAX_RECORDING_TIME = 120; // 2 minutes
 
   useEffect(() => {
-    // Load list of teachers
     loadTeachers();
+    handleQRCodeParams();
 
-    // Read session ID from URL parameters (if any)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (selectedTeacherId) {
+      loadClasses(selectedTeacherId);
+    }
+  }, [selectedTeacherId]);
+
+  const handleQRCodeParams = async () => {
     const searchParams = new URLSearchParams(window.location.search);
     const teacherIdFromQR = searchParams.get('teacher');
     const sessionIdFromQR = searchParams.get('session');
+    const singleClass = searchParams.get('class');
+    const multiClasses = searchParams.get('classes');
 
-    // Pre-select teacher if from QR code
     if (teacherIdFromQR) {
       setSelectedTeacherId(teacherIdFromQR);
       sessionStorage.setItem('teacherId', teacherIdFromQR);
@@ -47,10 +67,50 @@ const Capture = () => {
       sessionStorage.setItem('sessionId', sessionIdFromQR);
     }
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    // Handle class parameters
+    if (teacherIdFromQR && singleClass) {
+      // Single class locked
+      try {
+        const { data, error } = await supabase
+          .from('classes')
+          .select('id, nom')
+          .eq('id', singleClass)
+          .eq('teacher_id', teacherIdFromQR)
+          .single();
+
+        if (!error && data) {
+          setLockedClass(data);
+          setSelectedClassId(data.id);
+          sessionStorage.setItem('classId', data.id);
+          sessionStorage.setItem('className', data.nom);
+        }
+      } catch (error) {
+        console.error('Error loading locked class:', error);
+        toast.error('Classe introuvable');
+      }
+    } else if (teacherIdFromQR && multiClasses) {
+      // Multiple classes or all
+      if (multiClasses === 'all') {
+        // Will load all classes via loadClasses
+      } else {
+        // Load specific classes
+        const classIds = multiClasses.split(',');
+        try {
+          const { data, error } = await supabase
+            .from('classes')
+            .select('id, nom')
+            .in('id', classIds)
+            .eq('teacher_id', teacherIdFromQR);
+
+          if (!error && data) {
+            setClasses(data);
+          }
+        } catch (error) {
+          console.error('Error loading classes:', error);
+        }
+      }
+    }
+  };
 
   const loadTeachers = async () => {
     try {
@@ -64,6 +124,31 @@ const Capture = () => {
       toast.error('Erreur lors du chargement des enseignants');
     } finally {
       setLoadingTeachers(false);
+    }
+  };
+
+  const loadClasses = async (teacherId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, nom')
+        .eq('teacher_id', teacherId)
+        .order('nom');
+
+      if (error) throw error;
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      toast.error('Erreur lors du chargement des classes');
+    }
+  };
+
+  const handleClassChange = (classId: string) => {
+    setSelectedClassId(classId);
+    const classe = classes.find(c => c.id === classId);
+    if (classe) {
+      sessionStorage.setItem('classId', classe.id);
+      sessionStorage.setItem('className', classe.nom);
     }
   };
 
@@ -137,6 +222,11 @@ const Capture = () => {
       return;
     }
 
+    if (!selectedClassId && !lockedClass) {
+      toast.error("Veuillez sélectionner votre classe");
+      return;
+    }
+
     try {
       toast.info("Upload de votre audio en cours...");
 
@@ -207,7 +297,7 @@ const Capture = () => {
             {loadingTeachers ? (
               <div className="text-sm text-muted-foreground">Chargement des enseignants...</div>
             ) : teachers.length > 0 ? (
-              <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+              <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId} disabled={!!selectedTeacherId}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Sélectionne ton enseignant" />
                 </SelectTrigger>
@@ -223,6 +313,38 @@ const Capture = () => {
               <div className="text-sm text-muted-foreground">Aucun enseignant disponible</div>
             )}
           </div>
+
+          {/* Class Select */}
+          {selectedTeacherId && (
+            <div className="space-y-2">
+              <Label htmlFor="class">Choisis ta classe</Label>
+              {lockedClass ? (
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-primary text-primary-foreground text-xs font-medium rounded">
+                      Classe assignée
+                    </span>
+                    <span className="font-semibold">{lockedClass.nom}</span>
+                  </div>
+                </div>
+              ) : classes.length > 0 ? (
+                <Select value={selectedClassId} onValueChange={handleClassChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionne ta classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((classe) => (
+                      <SelectItem key={classe.id} value={classe.id}>
+                        {classe.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm text-muted-foreground">Aucune classe disponible</div>
+              )}
+            </div>
+          )}
 
           {/* Recording Section */}
           <div className="flex flex-col items-center justify-center py-12 bg-muted/50 rounded-lg">
@@ -310,7 +432,7 @@ const Capture = () => {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!audioBlob || !selectedTeacherId}
+            disabled={!audioBlob || !selectedTeacherId || (!selectedClassId && !lockedClass)}
             size="lg"
             className="w-full bg-gradient-primary hover:opacity-90 shadow-primary"
           >
