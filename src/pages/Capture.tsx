@@ -8,14 +8,20 @@ import { Mic, Upload, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+interface Teacher {
+  id: string;
+  prenom: string;
+  nom: string;
+}
+
 const Capture = () => {
   const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [className, setClassName] = useState("");
-  const [classes, setClasses] = useState<Array<{ id: string; nom: string }>>([]);
-  const [loadingClasses, setLoadingClasses] = useState(true);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -23,18 +29,18 @@ const Capture = () => {
   const MAX_RECORDING_TIME = 120; // 2 minutes
 
   useEffect(() => {
-    // Read teacher ID and session ID from URL parameters
+    // Load list of teachers
+    loadTeachers();
+
+    // Read session ID from URL parameters (if any)
     const searchParams = new URLSearchParams(window.location.search);
     const teacherIdFromQR = searchParams.get('teacher');
     const sessionIdFromQR = searchParams.get('session');
 
-    // Store for later use in Processing
+    // Pre-select teacher if from QR code
     if (teacherIdFromQR) {
+      setSelectedTeacherId(teacherIdFromQR);
       sessionStorage.setItem('teacherId', teacherIdFromQR);
-      // Load classes for this teacher
-      loadClasses(teacherIdFromQR);
-    } else {
-      setLoadingClasses(false);
     }
     
     if (sessionIdFromQR) {
@@ -46,22 +52,18 @@ const Capture = () => {
     };
   }, []);
 
-  const loadClasses = async (teacherId: string) => {
+  const loadTeachers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('classes')
-        .select('id, nom')
-        .eq('teacher_id', teacherId)
-        .order('nom');
+      const { data, error } = await supabase.functions.invoke('list-teachers');
 
       if (error) throw error;
 
-      setClasses(data || []);
+      setTeachers(data?.teachers || []);
     } catch (error) {
-      console.error('Error loading classes:', error);
-      toast.error('Erreur lors du chargement des classes');
+      console.error('Error loading teachers:', error);
+      toast.error('Erreur lors du chargement des enseignants');
     } finally {
-      setLoadingClasses(false);
+      setLoadingTeachers(false);
     }
   };
 
@@ -130,8 +132,8 @@ const Capture = () => {
       return;
     }
 
-    if (!className.trim()) {
-      toast.error("Veuillez entrer le nom de votre classe");
+    if (!selectedTeacherId) {
+      toast.error("Veuillez sélectionner votre enseignant");
       return;
     }
 
@@ -167,10 +169,10 @@ const Capture = () => {
         throw new Error("URL de fichier manquante");
       }
 
-      // Store public URL and class name in sessionStorage for processing page
+      // Store public URL and teacher ID in sessionStorage for processing page
       sessionStorage.setItem("audioUrl", publicUrl);
       sessionStorage.setItem("submissionId", sessionId);
-      sessionStorage.setItem("className", className);
+      sessionStorage.setItem("teacherId", selectedTeacherId);
 
       toast.success("Audio uploadé avec succès!");
       navigate("/processing");
@@ -199,26 +201,26 @@ const Capture = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Class Name Select */}
+          {/* Teacher Select */}
           <div className="space-y-2">
-            <Label htmlFor="className">Choisis ta classe</Label>
-            {loadingClasses ? (
-              <div className="text-sm text-muted-foreground">Chargement des classes...</div>
-            ) : classes.length > 0 ? (
-              <Select value={className} onValueChange={setClassName}>
+            <Label htmlFor="teacher">Choisis ton enseignant / formateur</Label>
+            {loadingTeachers ? (
+              <div className="text-sm text-muted-foreground">Chargement des enseignants...</div>
+            ) : teachers.length > 0 ? (
+              <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionne ta classe" />
+                  <SelectValue placeholder="Sélectionne ton enseignant" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classes.map((classe) => (
-                    <SelectItem key={classe.id} value={classe.nom}>
-                      {classe.nom}
+                  {teachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      {teacher.prenom} {teacher.nom}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : (
-              <div className="text-sm text-muted-foreground">Aucune classe disponible</div>
+              <div className="text-sm text-muted-foreground">Aucun enseignant disponible</div>
             )}
           </div>
 
@@ -308,7 +310,7 @@ const Capture = () => {
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!audioBlob || !className.trim()}
+            disabled={!audioBlob || !selectedTeacherId}
             size="lg"
             className="w-full bg-gradient-primary hover:opacity-90 shadow-primary"
           >

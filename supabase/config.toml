@@ -2,3 +2,9 @@ project_id = "lfagpktbjzlyylbuwckk"
 
 [functions.upload-audio]
 verify_jwt = false
+
+[functions.list-teachers]
+verify_jwt = false
+
+[functions.fetch-airtable]
+verify_jwt = false
