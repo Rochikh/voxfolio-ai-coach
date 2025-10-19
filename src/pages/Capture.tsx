@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, Upload, StopCircle } from "lucide-react";
+import { Mic, Upload, StopCircle, LayoutDashboard } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Teacher {
   id: string;
@@ -21,6 +22,7 @@ interface Classe {
 
 const Capture = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -281,16 +283,34 @@ const Capture = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl p-8 shadow-primary">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-            Voxfolio
-          </h1>
-          <p className="text-muted-foreground">
-            Enregistre ta présentation professionnelle (max 2 min)
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4">
+      {/* Teacher Dashboard Button */}
+      {user && (
+        <div className="container max-w-2xl mx-auto pt-4 pb-2">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/dashboard')}
+              className="gap-2"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Mon tableau de bord
+            </Button>
+          </div>
         </div>
+      )}
+
+      <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+        <Card className="w-full max-w-2xl p-8 shadow-primary">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+              Voxfolio
+            </h1>
+            <p className="text-muted-foreground">
+              Enregistre ta présentation professionnelle (max 2 min)
+            </p>
+          </div>
 
         <div className="space-y-6">
           {/* Teacher Select - Only show if NOT from QR code */}
@@ -444,6 +464,7 @@ const Capture = () => {
           </Button>
         </div>
       </Card>
+      </div>
     </div>
   );
 };
