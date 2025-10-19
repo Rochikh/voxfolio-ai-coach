@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, Users, GraduationCap, BookOpen, Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import TeacherNav from "@/components/TeacherNav";
+import { TeacherNav } from "@/components/TeacherNav";
 
 interface UserWithRole {
   id: string;
@@ -109,26 +109,36 @@ const Admin = () => {
       });
 
       // Récupération de la liste des utilisateurs
-      const { data, error } = await supabase
+      const { data: profilesData, error: profilesError } = await supabase
         .from("profiles")
-        .select(
-          `
-          id,
-          email,
-          prenom,
-          nom,
-          classe,
-          created_at,
-          user_roles(role),
-          classes(id, nom)
-        `
-        )
+        .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      setUsers(data || []);
-      setFilteredUsers(data || []);
+      // Récupération des rôles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id, role");
+
+      if (rolesError) throw rolesError;
+
+      // Récupération des classes
+      const { data: classesData, error: classesError } = await supabase
+        .from("classes")
+        .select("teacher_id, id, nom");
+
+      if (classesError) throw classesError;
+
+      // Joindre les données côté client
+      const usersWithRoles = profilesData?.map((profile) => ({
+        ...profile,
+        user_roles: rolesData?.filter((r) => r.user_id === profile.id) || [],
+        classes: classesData?.filter((c) => c.teacher_id === profile.id) || [],
+      })) || [];
+
+      setUsers(usersWithRoles);
+      setFilteredUsers(usersWithRoles);
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
       toast({
