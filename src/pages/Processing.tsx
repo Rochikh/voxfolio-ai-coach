@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, Image as ImageIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Processing = () => {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ const Processing = () => {
   useEffect(() => {
     const audioUrl = sessionStorage.getItem("audioUrl");
     const submissionId = sessionStorage.getItem("submissionId");
+    const teacherIdFromSession = sessionStorage.getItem("teacherId");
 
     if (!audioUrl || !submissionId) {
       navigate("/capture");
@@ -29,6 +31,23 @@ const Processing = () => {
     // Call Make.com webhook
     const processWithMake = async () => {
       try {
+        // Get teacher ID from authenticated user profile or from QR code session
+        let teacherId = teacherIdFromSession;
+        
+        if (!teacherId) {
+          // Fallback: try to get from authenticated user
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('airtable_teacher_id')
+              .eq('id', user.id)
+              .single();
+            
+            teacherId = profile?.airtable_teacher_id || `teacher_${user.id.slice(0, 8)}`;
+          }
+        }
+
         // Real POST to Make.com
         const response = await fetch(makeWebhookUrl, {
           method: "POST",
@@ -38,8 +57,8 @@ const Processing = () => {
           body: JSON.stringify({
             submissionId,
             audio_url: audioUrl,
-            ID_Enseignant: "teacher_001", // TODO: From session/auth
-            ID_Utilisateur: "student_001", // TODO: From session/auth
+            ID_Enseignant: teacherId || "teacher_default",
+            ID_Apprenant: submissionId,
           }),
         });
         

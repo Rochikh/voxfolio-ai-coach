@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut, Users, BookOpen } from 'lucide-react';
+import { LogOut, Users, BookOpen, QrCode } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -106,6 +106,23 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <QrCode className="mr-2 h-5 w-5" />
+                QR Code
+              </CardTitle>
+              <CardDescription>
+                Générez un QR code pour vos apprenants
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" onClick={() => navigate('/qr-generator')}>
+                Générer un QR Code
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">

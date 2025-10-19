@@ -14,8 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      classes: {
+        Row: {
+          airtable_teacher_id: string
+          created_at: string | null
+          id: string
+          nom: string
+          teacher_id: string
+        }
+        Insert: {
+          airtable_teacher_id: string
+          created_at?: string | null
+          id?: string
+          nom: string
+          teacher_id: string
+        }
+        Update: {
+          airtable_teacher_id?: string
+          created_at?: string | null
+          id?: string
+          nom?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          airtable_teacher_id: string | null
           classe: string | null
           created_at: string
           email: string
@@ -25,6 +58,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          airtable_teacher_id?: string | null
           classe?: string | null
           created_at?: string
           email: string
@@ -34,6 +68,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          airtable_teacher_id?: string | null
           classe?: string | null
           created_at?: string
           email?: string

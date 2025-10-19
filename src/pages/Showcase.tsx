@@ -4,76 +4,80 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface PortfolioItem {
   id: string;
   image: string;
   prenom: string;
-  date: string;
+  created: string;
 }
 
 const Showcase = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In production, fetch from Airtable filtered by ID_Enseignant
-    const fetchPortfolios = async () => {
-      try {
-        // Mock API call
-        /*
-        const teacherId = "teacher_001"; // From auth
-        const response = await fetch(
-          `https://api.airtable.com/v0/${baseId}/${tableId}?filterByFormula={ID_Enseignant}='${teacherId}'`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-            },
-          }
-        );
-        const data = await response.json();
-        */
+    if (!authLoading && !user) {
+      navigate('/login');
+      return;
+    }
 
-        // Mock data
-        setTimeout(() => {
-          setPortfolios([
-            {
-              id: "1",
-              image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=400&fit=crop",
-              prenom: "Sophie",
-              date: "2025-01-15",
-            },
-            {
-              id: "2",
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=400&fit=crop",
-              prenom: "Thomas",
-              date: "2025-01-14",
-            },
-            {
-              id: "3",
-              image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=400&fit=crop",
-              prenom: "Marie",
-              date: "2025-01-13",
-            },
-            {
-              id: "4",
-              image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=400&fit=crop",
-              prenom: "Lucas",
-              date: "2025-01-12",
-            },
-          ]);
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error("Error fetching portfolios:", error);
+    if (user) {
+      fetchPortfolios();
+    }
+  }, [user, authLoading, navigate]);
+
+  const fetchPortfolios = async () => {
+    if (!user) return;
+
+    try {
+      // Get teacher's airtable_teacher_id from profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('airtable_teacher_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const teacherId = profile?.airtable_teacher_id;
+
+      if (!teacherId) {
+        toast.error("Aucun ID enseignant configuré dans votre profil");
         setLoading(false);
+        return;
       }
-    };
 
-    fetchPortfolios();
-  }, []);
+      // Call Edge Function to fetch portfolios from Airtable
+      const { data, error } = await supabase.functions.invoke('fetch-airtable', {
+        body: { 
+          teacherId 
+        }
+      });
+
+      if (error) throw error;
+
+      const mappedPortfolios = data.records.map((record: any) => ({
+        id: record.id,
+        image: record.image || "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=400&fit=crop",
+        prenom: record.prenom,
+        created: record.created
+      }));
+
+      setPortfolios(mappedPortfolios);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching portfolios:", error);
+      toast.error("Erreur lors du chargement des portfolios");
+      setLoading(false);
+    }
+  };
 
   const filteredPortfolios = portfolios.filter((portfolio) =>
     portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase())
@@ -150,7 +154,7 @@ const Showcase = () => {
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-1">{portfolio.prenom}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(portfolio.date).toLocaleDateString("fr-FR", {
+                    {new Date(portfolio.created).toLocaleDateString("fr-FR", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",

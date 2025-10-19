@@ -17,6 +17,19 @@ const Capture = () => {
   const MAX_RECORDING_TIME = 120; // 2 minutes
 
   useEffect(() => {
+    // Read teacher ID and session ID from URL parameters
+    const searchParams = new URLSearchParams(window.location.search);
+    const teacherIdFromQR = searchParams.get('teacher');
+    const sessionIdFromQR = searchParams.get('session');
+
+    // Store for later use in Processing
+    if (teacherIdFromQR) {
+      sessionStorage.setItem('teacherId', teacherIdFromQR);
+    }
+    if (sessionIdFromQR) {
+      sessionStorage.setItem('sessionId', sessionIdFromQR);
+    }
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -92,9 +105,12 @@ const Capture = () => {
     reader.onloadend = async () => {
       const audioUrl = reader.result as string;
       
+      // Use session ID from QR code if available, otherwise generate new one
+      const sessionId = sessionStorage.getItem('sessionId') || Date.now().toString();
+      
       // Store in sessionStorage for processing page
       sessionStorage.setItem("audioUrl", audioUrl);
-      sessionStorage.setItem("submissionId", Date.now().toString());
+      sessionStorage.setItem("submissionId", sessionId);
       
       navigate("/processing");
     };

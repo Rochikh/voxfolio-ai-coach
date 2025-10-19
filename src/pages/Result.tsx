@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ResultData {
   image: string;
@@ -27,36 +28,24 @@ const Result = () => {
       return;
     }
 
-    // In production, fetch from Airtable using the record ID
-    // For now, mock data
     const fetchResult = async () => {
       try {
-        // Mock API call to Airtable
-        /*
-        const response = await fetch(`https://api.airtable.com/v0/${baseId}/${tableId}/${airtableRecordId}`, {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-          },
+        const { data, error } = await supabase.functions.invoke('fetch-airtable', {
+          body: { 
+            recordId: airtableRecordId 
+          }
         });
-        const data = await response.json();
-        */
-        
-        // Mock result
-        setTimeout(() => {
-          setResultData({
-            image: "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=800&fit=crop",
-            feedback: "Excellente présentation ! Votre parcours montre une progression cohérente dans le domaine du développement web. Point d'amélioration prioritaire : Structurez davantage vos étapes en mettant l'accent sur les compétences techniques acquises à chaque projet. Mentionnez les technologies spécifiques utilisées pour renforcer votre crédibilité.",
-            prenom: "Sophie",
-            objectif: "Devenir développeuse full-stack dans une start-up innovante",
-            etapes: [
-              "Formation intensive en développement web",
-              "Stage de 6 mois chez TechCorp",
-              "Création de 3 projets personnels open-source",
-              "Contribution active à la communauté dev locale"
-            ],
-          });
-          setLoading(false);
-        }, 500);
+
+        if (error) throw error;
+
+        setResultData({
+          image: data.image || "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=800&fit=crop",
+          feedback: data.feedback || '',
+          prenom: data.prenom || '',
+          objectif: data.objectif || '',
+          etapes: Array.isArray(data.etapes) ? data.etapes : []
+        });
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching result:", error);
         toast.error("Erreur lors du chargement des résultats");
@@ -71,8 +60,25 @@ const Result = () => {
     toast.success("Lien de partage copié !");
   };
 
-  const handleDownload = () => {
-    toast.success("Image téléchargée !");
+  const handleDownload = async () => {
+    if (!resultData?.image) return;
+    
+    try {
+      const response = await fetch(resultData.image);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `portfolio-${resultData.prenom || 'voxfolio'}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Image téléchargée !");
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error("Erreur lors du téléchargement");
+    }
   };
 
   if (loading) {
