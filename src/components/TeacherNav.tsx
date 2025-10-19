@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, QrCode, Users, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, QrCode, Users, BookOpen, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
 export function TeacherNav() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -79,6 +79,18 @@ export function TeacherNav() {
                 <BookOpen className="h-4 w-4" />
                 Productions
               </Button>
+              
+              {user?.email === "contact@rochane.fr" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/admin')}
+                  className="gap-2"
+                >
+                  <Shield className="h-4 w-4" />
+                  Admin
+                </Button>
+              )}
             </nav>
           </div>
 
