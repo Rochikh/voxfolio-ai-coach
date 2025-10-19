@@ -31,7 +31,7 @@ interface Stats {
 }
 
 const Admin = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserWithRole[]>([]);
@@ -46,14 +46,20 @@ const Admin = () => {
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
   useEffect(() => {
+    if (loading) return;
+
     // Vérification d'accès
-    if (!user || user.email !== "contact@rochane.fr") {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (user.email !== "contact@rochane.fr") {
       navigate("/dashboard");
       return;
     }
 
     fetchData();
-  }, [user, navigate]);
+  }, [user, loading, navigate]);
 
   useEffect(() => {
     // Filtrage des utilisateurs
