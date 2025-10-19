@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, Upload, StopCircle, LayoutDashboard } from "lucide-react";
+import { Mic, Upload, StopCircle, LayoutDashboard, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Teacher {
   id: string;
@@ -369,6 +370,14 @@ const Capture = () => {
               )}
             </div>
           )}
+
+          {/* Important reminder about saying first name */}
+          <Alert className="border-primary bg-primary/5">
+            <AlertCircle className="h-5 w-5 text-primary" />
+            <AlertDescription className="text-base font-medium ml-2">
+              <strong className="text-primary">Important :</strong> N&apos;oublie pas de te présenter par ton <strong>prénom</strong> au début de ton enregistrement !
+            </AlertDescription>
+          </Alert>
 
           {/* Recording Section */}
           <div className="flex flex-col items-center justify-center py-12 bg-muted/50 rounded-lg">
