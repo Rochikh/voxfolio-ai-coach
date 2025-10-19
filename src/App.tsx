@@ -8,6 +8,8 @@ import Capture from "./pages/Capture";
 import Processing from "./pages/Processing";
 import Result from "./pages/Result";
 import Showcase from "./pages/Showcase";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
           <Route path="/processing" element={<Processing />} />
           <Route path="/result" element={<Result />} />
           <Route path="/showcase" element={<Showcase />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

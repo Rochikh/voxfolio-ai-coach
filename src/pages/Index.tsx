@@ -1,12 +1,25 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Mic, Sparkles, Award, Users } from "lucide-react";
+import { Mic, Sparkles, Award, Users, LogIn } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background">
+      {/* Header */}
+      <header className="absolute top-0 right-0 p-4 z-20">
+        <Button
+          onClick={() => navigate("/login")}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <LogIn className="w-4 h-4" />
+          Espace Enseignant
+        </Button>
+      </header>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-4">
         <div className="absolute inset-0 opacity-10">
