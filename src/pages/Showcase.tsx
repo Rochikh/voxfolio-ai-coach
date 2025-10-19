@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,35 +20,70 @@ interface PortfolioItem {
 const Showcase = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isFromQR, setIsFromQR] = useState(false);
+  const [qrTeacherId, setQrTeacherId] = useState<string | null>(null);
+  const [qrClassId, setQrClassId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Check for QR code parameters
+    const teacherIdFromQR = searchParams.get('teacher');
+    const classIdFromQR = searchParams.get('class');
+    
+    if (teacherIdFromQR && classIdFromQR) {
+      setIsFromQR(true);
+      setQrTeacherId(teacherIdFromQR);
+      setQrClassId(classIdFromQR);
+      // Load class name and set it as filter
+      loadClassAndFetchPortfolios(teacherIdFromQR, classIdFromQR);
+    } else if (!authLoading && !user) {
       navigate('/login');
       return;
-    }
-
-    if (user) {
+    } else if (user) {
       fetchPortfolios();
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, searchParams]);
 
-  const fetchPortfolios = async (classFilter?: string) => {
-    if (!user) return;
+  const loadClassAndFetchPortfolios = async (teacherId: string, classId: string) => {
+    try {
+      // Load class name
+      const { data: classData, error: classError } = await supabase
+        .from('classes')
+        .select('nom')
+        .eq('id', classId)
+        .eq('teacher_id', teacherId)
+        .single();
+
+      if (classError) throw classError;
+
+      if (classData) {
+        setSelectedClass(classData.nom);
+        fetchPortfolios(classData.nom, teacherId);
+      }
+    } catch (error) {
+      console.error('Error loading class:', error);
+      toast.error('Classe introuvable');
+      setLoading(false);
+    }
+  };
+
+  const fetchPortfolios = async (classFilter?: string, teacherIdOverride?: string) => {
+    const effectiveTeacherId = teacherIdOverride || (user ? user.id : qrTeacherId);
+    
+    if (!effectiveTeacherId) return;
 
     try {
-      const teacherUUID = user.id;
-
-      console.log("Fetching portfolios for teacher UUID:", teacherUUID, "Class filter:", classFilter);
+      console.log("Fetching portfolios for teacher UUID:", effectiveTeacherId, "Class filter:", classFilter);
 
       // Call Edge Function to fetch portfolios from Airtable filtered by UUID and optionally by class
       const { data, error } = await supabase.functions.invoke('fetch-airtable', {
         body: { 
-          teacherId: teacherUUID,
+          teacherId: effectiveTeacherId,
           className: classFilter && classFilter !== "all" ? classFilter : undefined
         }
       });
@@ -63,12 +98,15 @@ const Showcase = () => {
         classe: record.classe
       }));
 
-      // Extract unique classes from portfolios
-      const uniqueClasses = Array.from(
-        new Set(mappedPortfolios.map((p: PortfolioItem) => p.classe).filter(Boolean))
-      ) as string[];
+      // Extract unique classes from portfolios (only if not from QR)
+      if (!isFromQR) {
+        const uniqueClasses = Array.from(
+          new Set(mappedPortfolios.map((p: PortfolioItem) => p.classe).filter(Boolean))
+        ) as string[];
+        
+        setClasses(uniqueClasses);
+      }
       
-      setClasses(uniqueClasses);
       setPortfolios(mappedPortfolios);
       setLoading(false);
     } catch (error) {
@@ -79,7 +117,7 @@ const Showcase = () => {
   };
 
   useEffect(() => {
-    if (selectedClass) {
+    if (selectedClass && !isFromQR) {
       fetchPortfolios(selectedClass);
     }
   }, [selectedClass]);
@@ -102,24 +140,42 @@ const Showcase = () => {
                 VOXFOLIO
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Vitrine des portfolios de votre classe
+                {isFromQR 
+                  ? `Vitrine des productions - ${selectedClass}`
+                  : 'Vitrine des portfolios de votre classe'
+                }
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/capture")}
-              className="gap-2 bg-gradient-primary hover:opacity-90 shadow-primary"
-            >
-              <Plus className="w-4 h-4" />
-              Nouveau Portfolio
-            </Button>
+            <div className="flex gap-2">
+              {user && !isFromQR && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="gap-2"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Tableau de bord
+                </Button>
+              )}
+              {!isFromQR && (
+                <Button
+                  onClick={() => navigate("/capture")}
+                  className="gap-2 bg-gradient-primary hover:opacity-90 shadow-primary"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nouveau Portfolio
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Class Filter Tabs */}
-        {classes.length > 0 && (
+        {/* Class Filter Tabs - Only show if not from QR */}
+        {!isFromQR && classes.length > 0 && (
           <div className="mb-6">
             <Tabs value={selectedClass} onValueChange={setSelectedClass}>
               <TabsList className="w-full justify-start overflow-x-auto">

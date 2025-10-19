@@ -27,6 +27,7 @@ export default function Classes() {
   const [isCreating, setIsCreating] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Classe | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrType, setQrType] = useState<'capture' | 'showcase'>('capture');
   const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -102,11 +103,19 @@ export default function Classes() {
     }
   };
 
-  const openClassQR = (classe: Classe) => {
+  const openClassQR = (classe: Classe, type: 'capture' | 'showcase') => {
     setSelectedClass(classe);
+    setQrType(type);
     const sessionId = crypto.randomUUID();
     const baseUrl = window.location.origin;
-    const url = `${baseUrl}/capture?teacher=${user?.id}&session=${sessionId}&class=${classe.id}`;
+    
+    let url: string;
+    if (type === 'capture') {
+      url = `${baseUrl}/capture?teacher=${user?.id}&session=${sessionId}&class=${classe.id}`;
+    } else {
+      url = `${baseUrl}/showcase?teacher=${user?.id}&class=${classe.id}`;
+    }
+    
     setQrCodeUrl(url);
   };
 
@@ -138,7 +147,8 @@ export default function Classes() {
           if (blob) {
             const downloadUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.download = `qr-classe-${selectedClass.nom.replace(/\s+/g, '-').toLowerCase()}.png`;
+            const typeLabel = qrType === 'capture' ? 'enregistrement' : 'vitrine';
+            link.download = `qr-${typeLabel}-${selectedClass.nom.replace(/\s+/g, '-').toLowerCase()}.png`;
             link.href = downloadUrl;
             link.click();
             URL.revokeObjectURL(downloadUrl);
@@ -244,10 +254,18 @@ export default function Classes() {
                   <Button 
                     variant="default" 
                     className="w-full gap-2"
-                    onClick={() => openClassQR(classe)}
+                    onClick={() => openClassQR(classe, 'capture')}
                   >
                     <QrCode className="h-4 w-4" />
-                    Voir le QR Code
+                    QR Code - Enregistrement
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => openClassQR(classe, 'showcase')}
+                  >
+                    <QrCode className="h-4 w-4" />
+                    QR Code - Vitrine
                   </Button>
                   <Button variant="outline" className="w-full" disabled>
                     Voir les apprenant·e·s
@@ -263,9 +281,14 @@ export default function Classes() {
       <Dialog open={!!selectedClass} onOpenChange={() => setSelectedClass(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>QR Code - {selectedClass?.nom}</DialogTitle>
+            <DialogTitle>
+              QR Code {qrType === 'capture' ? '- Enregistrement' : '- Vitrine'} - {selectedClass?.nom}
+            </DialogTitle>
             <DialogDescription>
-              Partage ce QR code avec tes apprenant·e·s de {selectedClass?.nom}
+              {qrType === 'capture' 
+                ? `Partage ce QR code avec tes apprenant·e·s de ${selectedClass?.nom} pour qu'ils enregistrent leur production`
+                : `Partage ce QR code avec tes apprenant·e·s de ${selectedClass?.nom} pour qu'ils voient les productions de leurs pairs`
+              }
             </DialogDescription>
           </DialogHeader>
           
