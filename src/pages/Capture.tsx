@@ -103,35 +103,35 @@ const Capture = () => {
 
     try {
       toast.info("Upload de votre audio en cours...");
-      
+
       // Use session ID from QR code if available, otherwise generate new one
       const sessionId = sessionStorage.getItem('sessionId') || `session-${Date.now()}`;
-      
-      // Upload audio to Supabase Storage
-      const fileName = `submissions/${sessionId}.webm`;
-      const { data, error } = await supabase.storage
-        .from('audio-submissions')
-        .upload(fileName, audioBlob, {
-          contentType: audioBlob.type,
-          upsert: true
-        });
 
-      if (error) {
-        console.error("Upload error:", error);
-        throw new Error("Échec de l'upload audio");
+      // Send audio to backend function (bypasses client RLS)
+      const formData = new FormData();
+      formData.append('file', audioBlob, `recording.${audioBlob.type.includes('webm') ? 'webm' : 'audio'}`);
+      formData.append('sessionId', sessionId);
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-audio`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        let errMsg = "Échec de l'upload audio";
+        try {
+          const err = await res.json();
+          errMsg = err?.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('audio-submissions')
-        .getPublicUrl(fileName);
+      const { publicUrl } = await res.json();
 
-      console.log("Audio uploaded successfully:", publicUrl);
-      
       // Store public URL in sessionStorage for processing page
       sessionStorage.setItem("audioUrl", publicUrl);
       sessionStorage.setItem("submissionId", sessionId);
-      
+
       toast.success("Audio uploadé avec succès!");
       navigate("/processing");
     } catch (error) {
