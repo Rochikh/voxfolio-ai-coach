@@ -33,58 +33,98 @@ serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    const contentType = req.headers.get("content-type") || "";
-    if (!contentType.includes("multipart/form-data")) {
+    const contentTypeHeader = req.headers.get("content-type") || "";
+
+    let fileBytes: Uint8Array;
+    let mimeType = "";
+    let sessionId = "";
+
+    if (contentTypeHeader.includes("application/json")) {
+      // JSON body with base64 payload
+      const payload = await req.json();
+      const fileBase64 = payload.fileBase64 as string | undefined;
+      mimeType = (payload.contentType as string | undefined) || "";
+      sessionId = (payload.sessionId as string | undefined) || "";
+
+      if (!fileBase64 || !mimeType || !sessionId) {
+        return new Response(JSON.stringify({ error: "Missing fileBase64, contentType or sessionId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const binary = atob(fileBase64);
+      const len = binary.length;
+      fileBytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) fileBytes[i] = binary.charCodeAt(i);
+
+      if (!mimeType.startsWith("audio/")) {
+        return new Response(JSON.stringify({ error: "Invalid file type" }), {
+          status: 415,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (fileBytes.byteLength > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: "Fichier trop volumineux (max 10MB)" }), {
+          status: 413,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else if (contentTypeHeader.includes("multipart/form-data")) {
+      // Multipart form-data payload
+      const formData = await req.formData();
+      const file = formData.get("file") as File | null;
+      sessionId = (formData.get("sessionId") as string | null)?.toString() || "";
+
+      if (!file || !sessionId) {
+        return new Response(JSON.stringify({ error: "Missing file or sessionId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!file.type.startsWith("audio/")) {
+        return new Response(JSON.stringify({ error: "Invalid file type" }), {
+          status: 415,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        return new Response(JSON.stringify({ error: "Fichier trop volumineux (max 10MB)" }), {
+          status: 413,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      mimeType = file.type;
+      const ab = await file.arrayBuffer();
+      fileBytes = new Uint8Array(ab);
+    } else {
       return new Response(
-        JSON.stringify({ error: "Content-Type must be multipart/form-data" }),
+        JSON.stringify({ error: "Unsupported Content-Type" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const sessionId = (formData.get("sessionId") as string | null)?.toString();
-
-    if (!file || !sessionId) {
-      return new Response(JSON.stringify({ error: "Missing file or sessionId" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!file.type.startsWith("audio/")) {
-      return new Response(JSON.stringify({ error: "Invalid file type" }), {
-        status: 415,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 10MB max (bucket also enforces this)
-    if (file.size > 10 * 1024 * 1024) {
-      return new Response(JSON.stringify({ error: "Fichier trop volumineux (max 10MB)" }), {
-        status: 413,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const ext = file.type.includes("webm")
+    const ext = mimeType.includes("webm")
       ? "webm"
-      : file.type.includes("mpeg") || file.type.includes("mp3")
+      : mimeType.includes("mpeg") || mimeType.includes("mp3")
       ? "mp3"
-      : file.type.includes("wav")
+      : mimeType.includes("wav")
       ? "wav"
-      : file.type.includes("ogg")
+      : mimeType.includes("ogg")
       ? "ogg"
       : "webm";
 
     const path = `submissions/${sessionId}.${ext}`;
 
-    const arrayBuffer = await file.arrayBuffer();
     const { error: uploadError } = await supabase
       .storage
       .from("audio-submissions")
-      .upload(path, arrayBuffer, {
-        contentType: file.type,
+      .upload(path, fileBytes, {
+        contentType: mimeType,
         upsert: true,
       });
 

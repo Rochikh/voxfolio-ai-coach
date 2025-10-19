@@ -1,1 +1,4 @@
 project_id = "lfagpktbjzlyylbuwckk"
+
+[functions.upload-audio]
+verify_jwt = false

@@ -107,26 +107,31 @@ const Capture = () => {
       // Use session ID from QR code if available, otherwise generate new one
       const sessionId = sessionStorage.getItem('sessionId') || `session-${Date.now()}`;
 
-      // Send audio to backend function (bypasses client RLS)
-      const formData = new FormData();
-      formData.append('file', audioBlob, `recording.${audioBlob.type.includes('webm') ? 'webm' : 'audio'}`);
-      formData.append('sessionId', sessionId);
+      // Convert Blob to base64 for edge function invoke
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const fileBase64 = btoa(binary);
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-audio`, {
-        method: 'POST',
-        body: formData,
+      const { data, error } = await supabase.functions.invoke('upload-audio', {
+        body: {
+          fileBase64,
+          contentType: audioBlob.type,
+          sessionId,
+        },
       });
 
-      if (!res.ok) {
-        let errMsg = "Échec de l'upload audio";
-        try {
-          const err = await res.json();
-          errMsg = err?.error || errMsg;
-        } catch {}
-        throw new Error(errMsg);
+      if (error) {
+        throw new Error(error.message || "Échec de l'upload audio");
       }
 
-      const { publicUrl } = await res.json();
+      const publicUrl = (data as any)?.publicUrl as string | undefined;
+      if (!publicUrl) {
+        throw new Error("URL de fichier manquante");
+      }
 
       // Store public URL in sessionStorage for processing page
       sessionStorage.setItem("audioUrl", publicUrl);
