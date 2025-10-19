@@ -62,6 +62,13 @@ const Capture = () => {
     const singleClass = searchParams.get('class');
     const multiClasses = searchParams.get('classes');
 
+    console.log('🔍 QR Code Parameters:', { 
+      teacherIdFromQR, 
+      sessionIdFromQR, 
+      singleClass, 
+      multiClasses 
+    });
+
     if (teacherIdFromQR) {
       setIsFromQR(true);
       setSelectedTeacherId(teacherIdFromQR);
@@ -75,6 +82,7 @@ const Capture = () => {
     // Handle class parameters
     if (teacherIdFromQR && singleClass) {
       // Single class locked
+      console.log('📌 Loading locked class:', { teacherIdFromQR, singleClass });
       try {
         const { data, error } = await supabase
           .from('classes')
@@ -83,15 +91,23 @@ const Capture = () => {
           .eq('teacher_id', teacherIdFromQR)
           .single();
 
-        if (!error && data) {
+        console.log('📊 Class data received:', { data, error });
+
+        if (error) {
+          console.error('❌ Error loading locked class:', error);
+          toast.error('Classe introuvable');
+        } else if (data) {
+          console.log('✅ Locked class set:', data);
           setLockedClass(data);
           setSelectedClassId(data.id);
           sessionStorage.setItem('classId', data.id);
           sessionStorage.setItem('className', data.nom);
+        } else {
+          console.warn('⚠️ No class data returned');
         }
       } catch (error) {
-        console.error('Error loading locked class:', error);
-        toast.error('Classe introuvable');
+        console.error('❌ Exception loading locked class:', error);
+        toast.error('Erreur lors du chargement de la classe');
       }
     } else if (teacherIdFromQR && multiClasses) {
       // Multiple classes or all
@@ -133,6 +149,7 @@ const Capture = () => {
   };
 
   const loadClasses = async (teacherId: string) => {
+    console.log('📚 Loading classes for teacher:', teacherId);
     try {
       const { data, error } = await supabase
         .from('classes')
@@ -140,10 +157,12 @@ const Capture = () => {
         .eq('teacher_id', teacherId)
         .order('nom');
 
+      console.log('📚 Classes loaded:', { data, error, count: data?.length });
+
       if (error) throw error;
       setClasses(data || []);
     } catch (error) {
-      console.error('Error loading classes:', error);
+      console.error('❌ Error loading classes:', error);
       toast.error('Erreur lors du chargement des classes');
     }
   };
