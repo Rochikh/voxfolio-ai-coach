@@ -37,27 +37,15 @@ const Showcase = () => {
     if (!user) return;
 
     try {
-      // Get teacher's airtable_teacher_id from profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('airtable_teacher_id')
-        .eq('id', user.id)
-        .single();
+      // Use the teacher's UUID from Lovable Cloud
+      const teacherUUID = user.id;
 
-      if (profileError) throw profileError;
+      console.log("Fetching portfolios for teacher UUID:", teacherUUID);
 
-      const teacherId = profile?.airtable_teacher_id;
-
-      if (!teacherId) {
-        toast.error("Aucun ID enseignant configuré dans votre profil");
-        setLoading(false);
-        return;
-      }
-
-      // Call Edge Function to fetch portfolios from Airtable
+      // Call Edge Function to fetch portfolios from Airtable filtered by UUID
       const { data, error } = await supabase.functions.invoke('fetch-airtable', {
         body: { 
-          teacherId 
+          teacherId: teacherUUID
         }
       });
 

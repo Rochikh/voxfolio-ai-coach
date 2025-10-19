@@ -31,24 +31,26 @@ const Processing = () => {
     // Call Make.com webhook
     const processWithMake = async () => {
       try {
-        // Get teacher ID from authenticated user profile or from QR code session
-        let teacherId = teacherIdFromSession;
+        // Get teacher UUID from session storage (from QR code) or from authenticated user
+        let teacherUUID = teacherIdFromSession;
         
-        if (!teacherId) {
-          // Fallback: try to get from authenticated user
+        if (!teacherUUID) {
+          // Fallback: try to get UUID from authenticated user
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('airtable_teacher_id')
-              .eq('id', user.id)
-              .single();
-            
-            teacherId = profile?.airtable_teacher_id || `teacher_${user.id.slice(0, 8)}`;
+            teacherUUID = user.id; // Use the actual UUID from Lovable Cloud
           }
         }
 
-        // Real POST to Make.com
+        // Generate unique learner UUID (session-based since learners don't have accounts)
+        const learnerUUID = submissionId;
+
+        console.log("Sending to Make.com:", {
+          ID_Enseignant: teacherUUID,
+          ID_Utilisateur: learnerUUID
+        });
+
+        // Real POST to Make.com with UUIDs
         const response = await fetch(makeWebhookUrl, {
           method: "POST",
           headers: {
@@ -57,8 +59,8 @@ const Processing = () => {
           body: JSON.stringify({
             submissionId,
             audio_url: audioUrl,
-            ID_Enseignant: teacherId || "teacher_default",
-            ID_Apprenant: submissionId,
+            ID_Enseignant: teacherUUID || "default",
+            ID_Utilisateur: learnerUUID,
           }),
         });
         

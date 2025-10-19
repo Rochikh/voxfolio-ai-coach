@@ -30,27 +30,19 @@ export default function QRGenerator() {
     if (!user) return;
 
     try {
-      // Fetch teacher's airtable_teacher_id
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('airtable_teacher_id')
-        .eq('id', user.id)
-        .single();
+      // Use the actual user UUID from Lovable Cloud
+      const teacherUUID = user.id;
+      setAirtableTeacherId(teacherUUID);
 
-      if (error) throw error;
-
-      const teacherId = profile?.airtable_teacher_id || `teacher_${user.id.slice(0, 8)}`;
-      setAirtableTeacherId(teacherId);
-
-      // Generate unique session ID
+      // Generate unique session ID (this will be the learner's UUID)
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
 
-      // Generate QR code URL
-      const url = `${window.location.origin}/capture?teacher=${teacherId}&session=${newSessionId}`;
+      // Generate QR code URL with teacher UUID
+      const url = `${window.location.origin}/capture?teacher=${teacherUUID}&session=${newSessionId}`;
       setQrUrl(url);
 
-      toast.success('QR Code généré !');
+      toast.success('QR Code généré avec UUID enseignant !');
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error('Erreur lors de la génération du QR code');
@@ -159,17 +151,17 @@ export default function QRGenerator() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">
-                  ID Enseignant (Airtable)
+                  UUID Enseignant (Lovable Cloud)
                 </p>
-                <p className="text-sm font-mono bg-muted p-2 rounded">
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">
                   {airtableTeacherId || 'Non configuré'}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">
-                  ID de Session
+                  UUID Apprenant (Session)
                 </p>
-                <p className="text-sm font-mono bg-muted p-2 rounded break-all">
+                <p className="text-xs font-mono bg-muted p-2 rounded break-all">
                   {sessionId || 'Aucune session'}
                 </p>
               </div>
