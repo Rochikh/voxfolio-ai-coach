@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Mic, Upload, StopCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Capture = () => {
   const navigate = useNavigate();
@@ -100,21 +101,43 @@ const Capture = () => {
       return;
     }
 
-    // Convert audio blob to base64 or URL for submission
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const audioUrl = reader.result as string;
+    try {
+      toast.info("Upload de votre audio en cours...");
       
       // Use session ID from QR code if available, otherwise generate new one
-      const sessionId = sessionStorage.getItem('sessionId') || Date.now().toString();
+      const sessionId = sessionStorage.getItem('sessionId') || `session-${Date.now()}`;
       
-      // Store in sessionStorage for processing page
-      sessionStorage.setItem("audioUrl", audioUrl);
+      // Upload audio to Supabase Storage
+      const fileName = `submissions/${sessionId}.webm`;
+      const { data, error } = await supabase.storage
+        .from('audio-submissions')
+        .upload(fileName, audioBlob, {
+          contentType: audioBlob.type,
+          upsert: true
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+        throw new Error("Échec de l'upload audio");
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('audio-submissions')
+        .getPublicUrl(fileName);
+
+      console.log("Audio uploaded successfully:", publicUrl);
+      
+      // Store public URL in sessionStorage for processing page
+      sessionStorage.setItem("audioUrl", publicUrl);
       sessionStorage.setItem("submissionId", sessionId);
       
+      toast.success("Audio uploadé avec succès!");
       navigate("/processing");
-    };
-    reader.readAsDataURL(audioBlob);
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("Erreur lors de l'upload. Veuillez réessayer.");
+    }
   };
 
   const formatTime = (seconds: number) => {

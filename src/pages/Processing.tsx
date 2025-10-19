@@ -31,6 +31,14 @@ const Processing = () => {
     // Call Make.com webhook
     const processWithMake = async () => {
       try {
+        // Validate that audioUrl is a proper HTTPS URL
+        if (!audioUrl.startsWith('https://')) {
+          console.error("Invalid audio URL format:", audioUrl);
+          throw new Error("Format d'URL audio invalide");
+        }
+
+        console.log("Audio URL format validated:", audioUrl);
+
         // Get teacher UUID from session storage (from QR code) or from authenticated user
         let teacherUUID = teacherIdFromSession;
         
@@ -46,6 +54,7 @@ const Processing = () => {
         const learnerUUID = submissionId;
 
         console.log("Sending to Make.com:", {
+          audio_url: audioUrl,
           ID_Enseignant: teacherUUID,
           ID_Utilisateur: learnerUUID
         });
