@@ -11,6 +11,7 @@ import Showcase from "./pages/Showcase";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import QRGenerator from "./pages/QRGenerator";
+import Classes from "./pages/Classes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/qr-generator" element={<QRGenerator />} />
+          <Route path="/classes" element={<Classes />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

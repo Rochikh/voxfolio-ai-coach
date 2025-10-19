@@ -53,6 +53,16 @@ export function TeacherNav() {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => navigate('/classes')}
+                className="gap-2"
+              >
+                <Users className="h-4 w-4" />
+                Classes
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate('/qr-generator')}
                 className="gap-2"
               >
