@@ -84,26 +84,30 @@ const Capture = () => {
       // Single class locked
       console.log('📌 Loading locked class:', { teacherIdFromQR, singleClass });
       try {
-        const { data, error } = await supabase
-          .from('classes')
-          .select('id, nom')
-          .eq('id', singleClass)
-          .eq('teacher_id', teacherIdFromQR)
-          .single();
+        const { data, error } = await supabase.functions.invoke('list-classes', {
+          body: {
+            teacherId: teacherIdFromQR,
+            classIds: [singleClass]
+          }
+        });
 
-        console.log('📊 Class data received:', { data, error });
+        console.log('📊 Classes via function (locked):', { data, error });
 
         if (error) {
-          console.error('❌ Error loading locked class:', error);
+          console.error('❌ Error loading locked class (fn):', error);
           toast.error('Classe introuvable');
-        } else if (data) {
-          console.log('✅ Locked class set:', data);
-          setLockedClass(data);
-          setSelectedClassId(data.id);
-          sessionStorage.setItem('classId', data.id);
-          sessionStorage.setItem('className', data.nom);
         } else {
-          console.warn('⚠️ No class data returned');
+          const cls = (data as any)?.classes?.[0];
+          if (!cls) {
+            console.warn('⚠️ No class data returned from function');
+            toast.error('Classe introuvable');
+          } else {
+            console.log('✅ Locked class set:', cls);
+            setLockedClass(cls);
+            setSelectedClassId(cls.id);
+            sessionStorage.setItem('classId', cls.id);
+            sessionStorage.setItem('className', cls.nom);
+          }
         }
       } catch (error) {
         console.error('❌ Exception loading locked class:', error);
@@ -117,17 +121,19 @@ const Capture = () => {
         // Load specific classes
         const classIds = multiClasses.split(',');
         try {
-          const { data, error } = await supabase
-            .from('classes')
-            .select('id, nom')
-            .in('id', classIds)
-            .eq('teacher_id', teacherIdFromQR);
+          const { data, error } = await supabase.functions.invoke('list-classes', {
+            body: {
+              teacherId: teacherIdFromQR,
+              classIds
+            }
+          });
 
-          if (!error && data) {
-            setClasses(data);
+          const list = (data as any)?.classes as { id: string; nom: string }[] | undefined;
+          if (!error && list) {
+            setClasses(list);
           }
         } catch (error) {
-          console.error('Error loading classes:', error);
+          console.error('Error loading classes (fn):', error);
         }
       }
     }
@@ -149,20 +155,19 @@ const Capture = () => {
   };
 
   const loadClasses = async (teacherId: string) => {
-    console.log('📚 Loading classes for teacher:', teacherId);
+    console.log('📚 Loading classes for teacher (fn):', teacherId);
     try {
-      const { data, error } = await supabase
-        .from('classes')
-        .select('id, nom')
-        .eq('teacher_id', teacherId)
-        .order('nom');
+      const { data, error } = await supabase.functions.invoke('list-classes', {
+        body: { teacherId }
+      });
 
-      console.log('📚 Classes loaded:', { data, error, count: data?.length });
+      const classesData = (data as any)?.classes as { id: string; nom: string }[] | undefined;
+      console.log('📚 Classes loaded (fn):', { classesData, error, count: classesData?.length });
 
       if (error) throw error;
-      setClasses(data || []);
+      setClasses(classesData || []);
     } catch (error) {
-      console.error('❌ Error loading classes:', error);
+      console.error('❌ Error loading classes (fn):', error);
       toast.error('Erreur lors du chargement des classes');
     }
   };
