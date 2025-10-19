@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mic, Upload, StopCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,8 @@ const Capture = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [className, setClassName] = useState("");
+  const [classes, setClasses] = useState<Array<{ id: string; nom: string }>>([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -29,7 +31,12 @@ const Capture = () => {
     // Store for later use in Processing
     if (teacherIdFromQR) {
       sessionStorage.setItem('teacherId', teacherIdFromQR);
+      // Load classes for this teacher
+      loadClasses(teacherIdFromQR);
+    } else {
+      setLoadingClasses(false);
     }
+    
     if (sessionIdFromQR) {
       sessionStorage.setItem('sessionId', sessionIdFromQR);
     }
@@ -38,6 +45,25 @@ const Capture = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  const loadClasses = async (teacherId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('classes')
+        .select('id, nom')
+        .eq('teacher_id', teacherId)
+        .order('nom');
+
+      if (error) throw error;
+
+      setClasses(data || []);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      toast.error('Erreur lors du chargement des classes');
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -173,17 +199,27 @@ const Capture = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Class Name Input */}
+          {/* Class Name Select */}
           <div className="space-y-2">
-            <Label htmlFor="className">Nom de votre classe</Label>
-            <Input
-              id="className"
-              type="text"
-              placeholder="Ex: TS2 - Maths, CAP Boulangerie B"
-              value={className}
-              onChange={(e) => setClassName(e.target.value)}
-              className="w-full"
-            />
+            <Label htmlFor="className">Choisis ta classe</Label>
+            {loadingClasses ? (
+              <div className="text-sm text-muted-foreground">Chargement des classes...</div>
+            ) : classes.length > 0 ? (
+              <Select value={className} onValueChange={setClassName}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionne ta classe" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((classe) => (
+                    <SelectItem key={classe.id} value={classe.nom}>
+                      {classe.nom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="text-sm text-muted-foreground">Aucune classe disponible</div>
+            )}
           </div>
 
           {/* Recording Section */}
