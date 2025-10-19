@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, Image as ImageIcon, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 const Processing = () => {
   const navigate = useNavigate();
@@ -22,14 +23,13 @@ const Processing = () => {
       return;
     }
 
-    // Simulate webhook call to Make.com
-    const makeWebhookUrl = "https://hook.eu1.make.com/your-webhook-url"; // To be replaced
+    // Webhook Make.com
+    const makeWebhookUrl = "https://hook.eu1.make.com/v72ikpqnmgsbdzyvb9r3d03nrsqv14kx";
     
-    // In production, this would be a real API call
-    const mockProcessing = async () => {
+    // Call Make.com webhook
+    const processWithMake = async () => {
       try {
-        // This would be the actual POST to Make.com
-        /*
+        // Real POST to Make.com
         const response = await fetch(makeWebhookUrl, {
           method: "POST",
           headers: {
@@ -38,15 +38,19 @@ const Processing = () => {
           body: JSON.stringify({
             submissionId,
             audio_url: audioUrl,
-            ID_Enseignant: "teacher_001", // From session/auth
-            ID_Utilisateur: "student_001", // From session/auth
+            ID_Enseignant: "teacher_001", // TODO: From session/auth
+            ID_Utilisateur: "student_001", // TODO: From session/auth
           }),
         });
         
-        const result = await response.json();
-        */
+        if (!response.ok) {
+          throw new Error(`Webhook error: ${response.status}`);
+        }
         
-        // Simulate processing time
+        const result = await response.json();
+        console.log("Make.com response:", result);
+        
+        // Progress simulation during processing
         let totalProgress = 0;
         const interval = setInterval(() => {
           totalProgress += 1;
@@ -59,8 +63,13 @@ const Processing = () => {
 
           if (totalProgress >= 100) {
             clearInterval(interval);
-            // Store mock result
-            sessionStorage.setItem("airtableRecordId", "rec_mock_" + submissionId);
+            // Store result from Make.com callback
+            if (result?.airtable_record_id) {
+              sessionStorage.setItem("airtableRecordId", result.airtable_record_id);
+            } else {
+              // Fallback pour test
+              sessionStorage.setItem("airtableRecordId", "rec_mock_" + submissionId);
+            }
             setTimeout(() => navigate("/result"), 500);
           }
         }, 200); // 20 seconds total (100 * 200ms)
@@ -68,11 +77,12 @@ const Processing = () => {
         return () => clearInterval(interval);
       } catch (error) {
         console.error("Processing error:", error);
-        navigate("/capture");
+        toast.error("Erreur lors du traitement. Veuillez réessayer.");
+        setTimeout(() => navigate("/capture"), 2000);
       }
     };
 
-    mockProcessing();
+    processWithMake();
   }, [navigate]);
 
   const CurrentIcon = steps[currentStep].icon;
