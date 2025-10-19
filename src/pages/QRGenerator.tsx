@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
+import { TeacherNav } from '@/components/TeacherNav';
 
 export default function QRGenerator() {
   const navigate = useNavigate();
@@ -85,14 +85,7 @@ export default function QRGenerator() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <header className="border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4">
-          <Button onClick={() => navigate('/dashboard')} variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Retour au tableau de bord
-          </Button>
-        </div>
-      </header>
+      <TeacherNav />
 
       <main className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8">
