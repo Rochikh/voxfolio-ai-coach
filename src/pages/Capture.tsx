@@ -30,6 +30,7 @@ const Capture = () => {
   const [classes, setClasses] = useState<Classe[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [lockedClass, setLockedClass] = useState<Classe | null>(null);
+  const [isFromQR, setIsFromQR] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -59,6 +60,7 @@ const Capture = () => {
     const multiClasses = searchParams.get('classes');
 
     if (teacherIdFromQR) {
+      setIsFromQR(true);
       setSelectedTeacherId(teacherIdFromQR);
       sessionStorage.setItem('teacherId', teacherIdFromQR);
     }
@@ -291,28 +293,30 @@ const Capture = () => {
         </div>
 
         <div className="space-y-6">
-          {/* Teacher Select */}
-          <div className="space-y-2">
-            <Label htmlFor="teacher">Choisis ton enseignant / formateur</Label>
-            {loadingTeachers ? (
-              <div className="text-sm text-muted-foreground">Chargement des enseignants...</div>
-            ) : teachers.length > 0 ? (
-              <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId} disabled={!!selectedTeacherId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sélectionne ton enseignant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teachers.map((teacher) => (
-                    <SelectItem key={teacher.id} value={teacher.id}>
-                      {teacher.prenom} {teacher.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <div className="text-sm text-muted-foreground">Aucun enseignant disponible</div>
-            )}
-          </div>
+          {/* Teacher Select - Only show if NOT from QR code */}
+          {!isFromQR && (
+            <div className="space-y-2">
+              <Label htmlFor="teacher">Choisis ton enseignant / formateur</Label>
+              {loadingTeachers ? (
+                <div className="text-sm text-muted-foreground">Chargement des enseignants...</div>
+              ) : teachers.length > 0 ? (
+                <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sélectionne ton enseignant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers.map((teacher) => (
+                      <SelectItem key={teacher.id} value={teacher.id}>
+                        {teacher.prenom} {teacher.nom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="text-sm text-muted-foreground">Aucun enseignant disponible</div>
+              )}
+            </div>
+          )}
 
           {/* Class Select */}
           {selectedTeacherId && (
