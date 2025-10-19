@@ -16,21 +16,18 @@ export type Database = {
     Tables: {
       classes: {
         Row: {
-          airtable_teacher_id: string
           created_at: string | null
           id: string
           nom: string
           teacher_id: string
         }
         Insert: {
-          airtable_teacher_id: string
           created_at?: string | null
           id?: string
           nom: string
           teacher_id: string
         }
         Update: {
-          airtable_teacher_id?: string
           created_at?: string | null
           id?: string
           nom?: string
@@ -48,7 +45,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          airtable_teacher_id: string | null
           classe: string | null
           created_at: string
           email: string
@@ -58,7 +54,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          airtable_teacher_id?: string | null
           classe?: string | null
           created_at?: string
           email: string
@@ -68,7 +63,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          airtable_teacher_id?: string | null
           classe?: string | null
           created_at?: string
           email?: string
