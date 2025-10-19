@@ -118,7 +118,7 @@ serve(async (req: Request) => {
       ? "ogg"
       : "webm";
 
-    const path = `submissions/${sessionId}.${ext}`;
+    const path = `${sessionId}.${ext}`;
 
     const { error: uploadError } = await supabase
       .storage
