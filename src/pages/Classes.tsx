@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, Users, QrCode, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { TeacherNav } from '@/components/TeacherNav';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Classe {
   id: string;
@@ -24,6 +25,9 @@ export default function Classes() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newClassName, setNewClassName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<Classe | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -95,6 +99,58 @@ export default function Classes() {
     } else {
       toast.success('Classe supprimée');
       loadClasses();
+    }
+  };
+
+  const openClassQR = (classe: Classe) => {
+    setSelectedClass(classe);
+    const sessionId = crypto.randomUUID();
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}/capture?teacher=${user?.id}&session=${sessionId}&class=${classe.id}`;
+    setQrCodeUrl(url);
+  };
+
+  const downloadQRCode = async () => {
+    if (!qrCodeRef.current || !selectedClass) return;
+
+    try {
+      const svgElement = qrCodeRef.current.querySelector('svg');
+      if (!svgElement) return;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `qr-classe-${selectedClass.nom.replace(/\s+/g, '-').toLowerCase()}.png`;
+            link.href = downloadUrl;
+            link.click();
+            URL.revokeObjectURL(downloadUrl);
+            toast.success('QR Code téléchargé !');
+          }
+        });
+      };
+
+      img.src = url;
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+      toast.error('Erreur lors du téléchargement');
     }
   };
 
@@ -184,7 +240,15 @@ export default function Classes() {
                     Créée le {new Date(classe.created_at).toLocaleDateString('fr-FR')}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2">
+                  <Button 
+                    variant="default" 
+                    className="w-full gap-2"
+                    onClick={() => openClassQR(classe)}
+                  >
+                    <QrCode className="h-4 w-4" />
+                    Voir le QR Code
+                  </Button>
                   <Button variant="outline" className="w-full" disabled>
                     Voir les apprenant·e·s
                   </Button>
@@ -194,6 +258,49 @@ export default function Classes() {
           </div>
         )}
       </main>
+
+      {/* QR Code Dialog */}
+      <Dialog open={!!selectedClass} onOpenChange={() => setSelectedClass(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>QR Code - {selectedClass?.nom}</DialogTitle>
+            <DialogDescription>
+              Partage ce QR code avec tes apprenant·e·s de {selectedClass?.nom}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {qrCodeUrl && (
+              <div className="flex flex-col items-center space-y-4">
+                <div 
+                  ref={qrCodeRef}
+                  className="bg-white p-4 rounded-lg shadow-sm"
+                >
+                  <QRCodeSVG value={qrCodeUrl} size={256} level="H" />
+                </div>
+
+                <Button 
+                  onClick={downloadQRCode} 
+                  className="w-full gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Télécharger le QR Code
+                </Button>
+
+                <div className="w-full p-4 bg-muted rounded-lg space-y-2 text-sm">
+                  <p className="font-semibold">Informations :</p>
+                  <p className="text-muted-foreground">
+                    <strong>Classe :</strong> {selectedClass?.nom}
+                  </p>
+                  <p className="text-muted-foreground break-all">
+                    <strong>URL :</strong> {qrCodeUrl}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
