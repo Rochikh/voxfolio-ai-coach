@@ -90,14 +90,14 @@ const Capture = () => {
         setAudioBlob(file);
         toast.success("Fichier audio chargé");
       } else {
-        toast.error("Veuillez sélectionner un fichier audio");
+        toast.error("Sélectionne un fichier audio");
       }
     }
   };
 
   const handleSubmit = async () => {
     if (!audioBlob) {
-      toast.error("Veuillez enregistrer ou uploader un audio");
+      toast.error("Enregistre ou uploade un audio");
       return;
     }
 
@@ -141,7 +141,7 @@ const Capture = () => {
       navigate("/processing");
     } catch (error) {
       console.error("Submit error:", error);
-      toast.error("Erreur lors de l'upload. Veuillez réessayer.");
+      toast.error("Erreur lors de l'upload. Réessaye.");
     }
   };
 
@@ -156,10 +156,10 @@ const Capture = () => {
       <Card className="w-full max-w-2xl p-8 shadow-primary">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-            VOXFOLIO
+            Voxfolio
           </h1>
           <p className="text-muted-foreground">
-            Enregistrez votre présentation professionnelle (max 2 minutes)
+            Enregistre ta présentation professionnelle (max 2 min)
           </p>
         </div>
 

@@ -10,9 +10,9 @@ const Processing = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
   const steps = [
-    { icon: Sparkles, text: "Transcription de votre audio...", duration: 30 },
+    { icon: Sparkles, text: "Transcription de ton audio...", duration: 30 },
     { icon: MessageSquare, text: "Analyse IA en cours...", duration: 35 },
-    { icon: ImageIcon, text: "Génération de votre visuel professionnel...", duration: 35 },
+    { icon: ImageIcon, text: "Génération de ton visuel professionnel·le...", duration: 35 },
   ];
 
   useEffect(() => {
@@ -128,7 +128,7 @@ const Processing = () => {
       <div className="relative z-10 text-center max-w-2xl mx-auto">
         {/* Logo */}
         <h1 className="text-5xl font-bold text-white mb-12 animate-float">
-          VOXFOLIO
+          Voxfolio
         </h1>
 
         {/* Main Icon */}
@@ -179,7 +179,7 @@ const Processing = () => {
 
         {/* Encouraging Message */}
         <p className="text-white/90 text-lg max-w-md mx-auto">
-          Votre IA travaille pour créer votre portfolio professionnel augmenté...
+          Ton IA travaille pour créer ton portfolio professionnel·le augmenté...
         </p>
 
         {/* Loading Spinner */}

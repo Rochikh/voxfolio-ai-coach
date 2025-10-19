@@ -105,10 +105,10 @@ const Result = () => {
             Retour à la vitrine
           </Button>
           <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Votre Portfolio Augmenté
+            Ton portfolio augmenté
           </h1>
           <p className="text-muted-foreground mt-2">
-            Résultat de l'analyse IA de votre présentation
+            Résultat de l'analyse IA de ta présentation
           </p>
         </div>
 
@@ -147,7 +147,7 @@ const Result = () => {
             <Card className="p-6 bg-gradient-to-br from-accent/5 to-primary/5 border-2 border-accent/20 shadow-glow">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-5 h-5 text-accent" />
-                <h2 className="text-xl font-semibold">Feedback IA Coach</h2>
+                <h2 className="text-xl font-semibold">Feedback coach IA</h2>
               </div>
               <p className="text-foreground leading-relaxed">{resultData.feedback}</p>
             </Card>
@@ -163,12 +163,12 @@ const Result = () => {
                 </div>
 
                 <div>
-                  <Badge className="mb-2">Objectif Professionnel</Badge>
+                  <Badge className="mb-2">Objectif professionnel·le</Badge>
                   <p className="text-foreground">{resultData.objectif}</p>
                 </div>
 
                 <div>
-                  <Badge className="mb-2">Étapes du Parcours</Badge>
+                  <Badge className="mb-2">Étapes du parcours</Badge>
                   <ul className="space-y-2 mt-2">
                     {resultData.etapes.map((etape, index) => (
                       <li key={index} className="flex gap-2">

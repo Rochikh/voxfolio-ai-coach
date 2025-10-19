@@ -16,7 +16,7 @@ const Index = () => {
           className="gap-2"
         >
           <LogIn className="w-4 h-4" />
-          Espace Enseignant
+          Espace enseignant·e
         </Button>
       </header>
 
@@ -30,10 +30,10 @@ const Index = () => {
         <div className="relative z-10 max-w-6xl mx-auto text-center">
           <div className="mb-8">
             <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent animate-float">
-              VOXFOLIO
+              Voxfolio
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-              Transformez votre voix en portfolio professionnel augmenté par l'IA
+              Transforme ta voix en portfolio professionnel·le augmenté par l'IA
             </p>
           </div>
 
@@ -63,9 +63,9 @@ const Index = () => {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <Mic className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Enregistrez</h3>
+              <h3 className="text-xl font-semibold mb-2">Enregistre</h3>
               <p className="text-muted-foreground">
-                Parlez de votre parcours professionnel en 2 minutes maximum
+                Parle de ton parcours professionnel·le en 2 min maximum
               </p>
             </div>
 
@@ -75,7 +75,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-semibold mb-2">L'IA analyse</h3>
               <p className="text-muted-foreground">
-                Transcription, analyse et génération de votre visuel professionnel
+                Transcription, analyse et génération de ton visuel professionnel·le
               </p>
             </div>
 
@@ -83,9 +83,9 @@ const Index = () => {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-success/10 flex items-center justify-center">
                 <Award className="w-8 h-8 text-success" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Valorisez</h3>
+              <h3 className="text-xl font-semibold mb-2">Valorise</h3>
               <p className="text-muted-foreground">
-                Recevez un feedback personnalisé et votre portfolio augmenté
+                Reçois un feedback personnalisé et ton portfolio augmenté
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-8 px-4 border-t">
         <div className="max-w-6xl mx-auto text-center text-muted-foreground">
-          <p>© 2025 VOXFOLIO - Outil de coaching pédagogique augmenté par l'IA</p>
+          <p>© 2025 Voxfolio - Outil de coaching pédagogique augmenté par l'IA</p>
         </div>
       </footer>
     </div>
