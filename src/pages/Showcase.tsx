@@ -51,6 +51,8 @@ const Showcase = () => {
 
   const loadClassAndFetchPortfolios = async (teacherId: string, classId: string) => {
     try {
+      console.log('Loading class from QR code:', { teacherId, classId });
+      
       // Load class name
       const { data: classData, error: classError } = await supabase
         .from('classes')
@@ -59,11 +61,17 @@ const Showcase = () => {
         .eq('teacher_id', teacherId)
         .single();
 
-      if (classError) throw classError;
+      console.log('Class data from Supabase:', classData);
+
+      if (classError) {
+        console.error('Error loading class:', classError);
+        throw classError;
+      }
 
       if (classData) {
+        console.log('Setting selectedClass to:', classData.nom);
         setSelectedClass(classData.nom);
-        fetchPortfolios(classData.nom, teacherId);
+        await fetchPortfolios(classData.nom, teacherId);
       }
     } catch (error) {
       console.error('Error loading class:', error);
@@ -78,7 +86,12 @@ const Showcase = () => {
     if (!effectiveTeacherId) return;
 
     try {
-      console.log("Fetching portfolios for teacher UUID:", effectiveTeacherId, "Class filter:", classFilter);
+      console.log("📊 Fetching portfolios:", { 
+        effectiveTeacherId, 
+        classFilter,
+        isFromQR,
+        user: user?.id 
+      });
 
       // Call Edge Function to fetch portfolios from Airtable filtered by UUID and optionally by class
       const { data, error } = await supabase.functions.invoke('fetch-airtable', {
@@ -87,6 +100,8 @@ const Showcase = () => {
           className: classFilter && classFilter !== "all" ? classFilter : undefined
         }
       });
+
+      console.log("📥 Response from edge function:", { data, error });
 
       if (error) throw error;
 
@@ -98,19 +113,22 @@ const Showcase = () => {
         classe: record.classe
       }));
 
+      console.log(`✅ Mapped ${mappedPortfolios.length} portfolios:`, mappedPortfolios);
+
       // Extract unique classes from portfolios (only if not from QR)
       if (!isFromQR) {
         const uniqueClasses = Array.from(
           new Set(mappedPortfolios.map((p: PortfolioItem) => p.classe).filter(Boolean))
         ) as string[];
         
+        console.log('Unique classes found:', uniqueClasses);
         setClasses(uniqueClasses);
       }
       
       setPortfolios(mappedPortfolios);
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching portfolios:", error);
+      console.error("❌ Error fetching portfolios:", error);
       toast.error("Erreur lors du chargement des portfolios");
       setLoading(false);
     }

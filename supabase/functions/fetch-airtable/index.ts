@@ -71,14 +71,17 @@ serve(async (req) => {
     // Case 2: Fetch all records for a teacher
     if (teacherId) {
       console.log(`Fetching portfolios for teacher: ${teacherId}`, className ? `and class: ${className}` : '');
+      console.log('Full request body:', { teacherId, className });
       
       // Build filter formula with optional class filter
       let filterFormula = `{ID_Enseignant}='${teacherId}'`;
       if (className) {
-        filterFormula = `AND(${filterFormula},{Classe_Nom}='${className}')`;
+        filterFormula = `AND(${filterFormula},{Nom de Classe}='${className}')`;
+        console.log('Filter formula with class:', filterFormula);
       }
       
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(filterFormula)}&sort[0][field]=Created&sort[0][direction]=desc`;
+      console.log('Airtable URL:', url);
       
       const response = await fetch(url, {
         headers: {
@@ -97,6 +100,7 @@ serve(async (req) => {
       }
 
       const data = await response.json();
+      console.log(`Found ${data.records.length} portfolios`);
       
       // Map Airtable records to our app format
       const records = data.records.map((record: any) => ({
@@ -104,7 +108,7 @@ serve(async (req) => {
         prenom: record.fields['Prénom'] || '',
         image: record.fields['image']?.[0]?.url || '',
         created: record.createdTime,
-        classe: record.fields['Classe_Nom'] || '',
+        classe: record.fields['Nom de Classe'] || '',
       }));
 
       return new Response(
