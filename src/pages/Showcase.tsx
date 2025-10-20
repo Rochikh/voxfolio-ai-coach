@@ -54,25 +54,27 @@ const Showcase = () => {
     try {
       console.log('Loading class from QR code:', { teacherId, classId });
       
-      // Load class name
-      const { data: classData, error: classError } = await supabase
-        .from('classes')
-        .select('nom')
-        .eq('id', classId)
-        .eq('teacher_id', teacherId)
-        .single();
+      // Use list-classes function to get class name (allows unauthenticated access)
+      const { data: classesData, error: classError } = await supabase.functions.invoke('list-classes', {
+        body: { teacherId }
+      });
 
-      console.log('Class data from Supabase:', classData);
+      console.log('Classes data from edge function:', classesData);
 
       if (classError) {
-        console.error('Error loading class:', classError);
+        console.error('Error loading classes:', classError);
         throw classError;
       }
 
-      if (classData) {
-        console.log('Setting selectedClass to:', classData.nom);
-        setSelectedClass(classData.nom);
-        await fetchPortfolios(classData.nom, teacherId);
+      // Find the specific class by ID
+      const targetClass = classesData.classes?.find((c: any) => c.id === classId);
+      
+      if (targetClass) {
+        console.log('Setting selectedClass to:', targetClass.nom);
+        setSelectedClass(targetClass.nom);
+        await fetchPortfolios(targetClass.nom, teacherId);
+      } else {
+        throw new Error('Class not found in teacher\'s classes');
       }
     } catch (error) {
       console.error('Error loading class:', error);
