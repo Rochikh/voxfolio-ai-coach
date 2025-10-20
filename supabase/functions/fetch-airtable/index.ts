@@ -76,7 +76,7 @@ serve(async (req) => {
       // Build filter formula with optional class filter
       let filterFormula = `{ID_Enseignant}='${teacherId}'`;
       if (className) {
-        filterFormula = `AND(${filterFormula},{Nom de Classe}='${className}')`;
+        filterFormula = `AND(${filterFormula},{Classe}='${className}')`;
         console.log('Filter formula with class:', filterFormula);
       }
       
@@ -109,7 +109,7 @@ serve(async (req) => {
         objectif: record.fields['Objectif'] || '',
         image: record.fields['image']?.[0]?.url || '',
         created: record.createdTime,
-        classe: record.fields['Nom de Classe'] || '',
+        classe: record.fields['Classe'] || '',
       }));
 
       return new Response(
