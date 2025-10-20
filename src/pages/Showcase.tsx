@@ -13,6 +13,7 @@ interface PortfolioItem {
   id: string;
   image: string;
   prenom: string;
+  objectif?: string;
   created: string;
   classe?: string;
 }
@@ -109,6 +110,7 @@ const Showcase = () => {
         id: record.id,
         image: record.image || "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=400&h=400&fit=crop",
         prenom: record.prenom,
+        objectif: record.objectif,
         created: record.created,
         classe: record.classe
       }));
@@ -251,6 +253,11 @@ const Showcase = () => {
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-lg mb-1">{portfolio.prenom}</h3>
+                  {portfolio.objectif && (
+                    <p className="text-sm text-foreground mb-2 line-clamp-2">
+                      {portfolio.objectif}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {new Date(portfolio.created).toLocaleDateString("fr-FR", {
                       day: "numeric",

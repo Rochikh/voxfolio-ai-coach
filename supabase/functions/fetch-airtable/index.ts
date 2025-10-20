@@ -106,6 +106,7 @@ serve(async (req) => {
       const records = data.records.map((record: any) => ({
         id: record.id,
         prenom: record.fields['Prénom'] || '',
+        objectif: record.fields['Objectif'] || '',
         image: record.fields['image']?.[0]?.url || '',
         created: record.createdTime,
         classe: record.fields['Nom de Classe'] || '',

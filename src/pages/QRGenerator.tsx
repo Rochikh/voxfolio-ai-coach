@@ -163,9 +163,10 @@ export default function QRGenerator() {
         </div>
 
         <Tabs defaultValue="teacher" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="teacher">QR Code Enseignant</TabsTrigger>
             <TabsTrigger value="class">QR Code Classe(s)</TabsTrigger>
+            <TabsTrigger value="showcase">QR Code Vitrine</TabsTrigger>
           </TabsList>
 
           <TabsContent value="teacher" className="space-y-6">
@@ -284,6 +285,75 @@ export default function QRGenerator() {
                           <p className="text-sm font-medium mb-1">Classes sélectionnées :</p>
                           <p className="text-xs text-muted-foreground">
                             {selectedClasses.map(id => classes.find(c => c.id === id)?.nom).join(', ')}
+                          </p>
+                        </div>
+                        <Button onClick={downloadQRCode} className="w-full" variant="outline">
+                          <Download className="mr-2 h-4 w-4" />
+                          Télécharger
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="showcase" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>QR Code Vitrine</CardTitle>
+                <CardDescription>
+                  Générez un QR code pour que vos apprenants puissent consulter la vitrine des portfolios de leur classe
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {classes.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Vous n'avez pas encore de classes.</p>
+                    <Button 
+                      variant="link" 
+                      onClick={() => navigate('/classes')}
+                      className="mt-2"
+                    >
+                      Créer une classe
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {classes.map((classe) => (
+                        <Button
+                          key={classe.id}
+                          variant={selectedClasses.includes(classe.id) ? "default" : "outline"}
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setSelectedClasses([classe.id]);
+                            const url = `${window.location.origin}/showcase?teacher=${user?.id}&class=${classe.id}`;
+                            setQrUrl(url);
+                            setQrType('class');
+                          }}
+                        >
+                          {classe.nom}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {qrUrl && qrType === 'class' && selectedClasses.length === 1 && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-white rounded-lg flex justify-center">
+                          <QRCodeSVG
+                            id="qr-code"
+                            value={qrUrl}
+                            size={256}
+                            level="H"
+                            includeMargin={true}
+                          />
+                        </div>
+                        <div className="p-3 bg-muted rounded-lg">
+                          <p className="text-sm font-medium mb-1">Classe sélectionnée :</p>
+                          <p className="text-xs text-muted-foreground">
+                            {classes.find(c => c.id === selectedClasses[0])?.nom}
                           </p>
                         </div>
                         <Button onClick={downloadQRCode} className="w-full" variant="outline">
