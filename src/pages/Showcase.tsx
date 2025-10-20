@@ -56,7 +56,7 @@ const Showcase = () => {
       
       // Use list-classes function to get class name (allows unauthenticated access)
       const { data: classesData, error: classError } = await supabase.functions.invoke('list-classes', {
-        body: { teacherId }
+        body: { teacherId, classIds: [classId] }
       });
 
       console.log('Classes data from edge function:', classesData);
@@ -66,15 +66,17 @@ const Showcase = () => {
         throw classError;
       }
 
-      // Find the specific class by ID
-      const targetClass = classesData.classes?.find((c: any) => c.id === classId);
+      // Expect a single match
+      const targetClass = classesData.classes?.[0];
       
       if (targetClass) {
         console.log('Setting selectedClass to:', targetClass.nom);
         setSelectedClass(targetClass.nom);
         await fetchPortfolios(targetClass.nom, teacherId);
       } else {
-        throw new Error('Class not found in teacher\'s classes');
+        console.warn('Class not found via edge function, proceeding without class filter');
+        setSelectedClass('all');
+        await fetchPortfolios(undefined, teacherId);
       }
     } catch (error) {
       console.error('Error loading class:', error);
@@ -146,7 +148,7 @@ const Showcase = () => {
   const filteredPortfolios = portfolios
     .filter((portfolio) => {
       const matchesSearch = portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesClass = isFromQR ? true : (selectedClass === "all" || portfolio.classe === selectedClass);
+      const matchesClass = selectedClass === "all" || portfolio.classe === selectedClass;
       return matchesSearch && matchesClass;
     });
 
@@ -162,7 +164,7 @@ const Showcase = () => {
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {isFromQR 
-                  ? `Vitrine des productions - ${selectedClass}`
+                  ? (selectedClass !== 'all' ? `Vitrine des productions - ${selectedClass}` : 'Vitrine des productions')
                   : 'Vitrine des portfolios de votre classe'
                 }
               </p>
