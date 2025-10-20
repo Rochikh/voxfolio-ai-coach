@@ -96,11 +96,10 @@ const Showcase = () => {
         user: user?.id 
       });
 
-      // Call Edge Function to fetch portfolios from Airtable filtered by UUID and optionally by class
+      // Call Edge Function to fetch portfolios from Airtable filtered by UUID only (avoid class filter issues)
       const { data, error } = await supabase.functions.invoke('fetch-airtable', {
         body: { 
-          teacherId: effectiveTeacherId,
-          className: classFilter && classFilter !== "all" ? classFilter : undefined
+          teacherId: effectiveTeacherId
         }
       });
 
@@ -147,7 +146,7 @@ const Showcase = () => {
   const filteredPortfolios = portfolios
     .filter((portfolio) => {
       const matchesSearch = portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesClass = selectedClass === "all" || portfolio.classe === selectedClass;
+      const matchesClass = isFromQR ? true : (selectedClass === "all" || portfolio.classe === selectedClass);
       return matchesSearch && matchesClass;
     });
 
