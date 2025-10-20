@@ -81,7 +81,15 @@ const Showcase = () => {
     } catch (error) {
       console.error('Error loading class:', error);
       toast.error('Classe introuvable');
-      setLoading(false);
+      // Fallback: still fetch portfolios for the teacher so the showcase works for non-auth users
+      try {
+        setSelectedClass('all');
+        await fetchPortfolios(undefined, teacherId);
+      } catch (e) {
+        console.error('Fallback fetch failed:', e);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

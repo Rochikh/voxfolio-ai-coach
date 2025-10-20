@@ -8,3 +8,7 @@ verify_jwt = false
 
 [functions.fetch-airtable]
 verify_jwt = false
+
+[functions.list-classes]
+verify_jwt = false
+
