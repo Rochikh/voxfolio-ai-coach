@@ -148,7 +148,7 @@ const Showcase = () => {
   const filteredPortfolios = portfolios
     .filter((portfolio) => {
       const matchesSearch = portfolio.prenom.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesClass = selectedClass === "all" || portfolio.classe === selectedClass;
+      const matchesClass = isFromQR ? true : (selectedClass === "all" || portfolio.classe === selectedClass);
       return matchesSearch && matchesClass;
     });
 
