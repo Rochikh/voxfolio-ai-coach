@@ -53,12 +53,12 @@ const Showcase = () => {
       return;
     }
 
-    // Regular authenticated flow
-    if (!authLoading && !user) {
-      navigate('/login');
-      return;
-    } else if (user) {
+    // Regular flow (not via QR)
+    if (user) {
       fetchPortfolios();
+    } else if (!authLoading) {
+      // Not logged in and not via QR: show page without redirect
+      setLoading(false);
     }
   }, [user, authLoading, navigate, searchParams]);
 
