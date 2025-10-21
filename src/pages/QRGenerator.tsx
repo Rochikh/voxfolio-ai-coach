@@ -327,9 +327,11 @@ export default function QRGenerator() {
                           key={classe.id}
                           variant={selectedClasses.includes(classe.id) ? "default" : "outline"}
                           className="w-full justify-start"
-                          onClick={() => {
+                           onClick={() => {
                             setSelectedClasses([classe.id]);
-                            const url = `${window.location.origin}/showcase?teacher=${user?.id}&class=${classe.id}`;
+                            const origin = window.location.origin;
+                            const url = `${origin}/showcase?teacher=${user?.id}&class=${classe.id}`;
+                            console.log('QRGenerator showcase URL:', { origin, url });
                             setQrUrl(url);
                             setQrType('class');
                           }}
@@ -339,29 +341,44 @@ export default function QRGenerator() {
                       ))}
                     </div>
 
-                    {qrUrl && qrType === 'class' && selectedClasses.length === 1 && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-white rounded-lg flex justify-center">
-                          <QRCodeSVG
-                            id="qr-code"
-                            value={qrUrl}
-                            size={256}
-                            level="H"
-                            includeMargin={true}
-                          />
+                      {qrUrl && qrType === 'class' && selectedClasses.length === 1 && (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-white rounded-lg flex justify-center">
+                            <QRCodeSVG
+                              id="qr-code"
+                              value={qrUrl}
+                              size={256}
+                              level="H"
+                              includeMargin={true}
+                            />
+                          </div>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <p className="text-sm font-medium mb-1">Classe sélectionnée :</p>
+                            <p className="text-xs text-muted-foreground">
+                              {classes.find(c => c.id === selectedClasses[0])?.nom}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-muted rounded-lg">
+                            <p className="text-sm font-medium mb-1">Lien vitrine :</p>
+                            <p className="text-xs font-mono break-all">{qrUrl}</p>
+                            <Button
+                              size="sm"
+                              className="mt-2"
+                              variant="secondary"
+                              onClick={() => {
+                                navigator.clipboard.writeText(qrUrl);
+                                toast.success('Lien copié');
+                              }}
+                            >
+                              Copier le lien
+                            </Button>
+                          </div>
+                          <Button onClick={downloadQRCode} className="w-full" variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Télécharger
+                          </Button>
                         </div>
-                        <div className="p-3 bg-muted rounded-lg">
-                          <p className="text-sm font-medium mb-1">Classe sélectionnée :</p>
-                          <p className="text-xs text-muted-foreground">
-                            {classes.find(c => c.id === selectedClasses[0])?.nom}
-                          </p>
-                        </div>
-                        <Button onClick={downloadQRCode} className="w-full" variant="outline">
-                          <Download className="mr-2 h-4 w-4" />
-                          Télécharger
-                        </Button>
-                      </div>
-                    )}
+                      )}
                   </>
                 )}
               </CardContent>
