@@ -36,13 +36,25 @@ const Showcase = () => {
     const teacherIdFromQR = searchParams.get('teacher');
     const classIdFromQR = searchParams.get('class');
     
-    if (teacherIdFromQR && classIdFromQR) {
+    // If coming from a QR link (teacher present), never redirect to login
+    if (teacherIdFromQR) {
       setIsFromQR(true);
       setQrTeacherId(teacherIdFromQR);
-      setQrClassId(classIdFromQR);
-      // Load class name and set it as filter
-      loadClassAndFetchPortfolios(teacherIdFromQR, classIdFromQR);
-    } else if (!authLoading && !user) {
+
+      if (classIdFromQR) {
+        setQrClassId(classIdFromQR);
+        // Load class name and set it as filter
+        loadClassAndFetchPortfolios(teacherIdFromQR, classIdFromQR);
+      } else {
+        // No class specified: show all teacher portfolios
+        setSelectedClass('all');
+        fetchPortfolios(undefined, teacherIdFromQR);
+      }
+      return;
+    }
+
+    // Regular authenticated flow
+    if (!authLoading && !user) {
       navigate('/login');
       return;
     } else if (user) {
