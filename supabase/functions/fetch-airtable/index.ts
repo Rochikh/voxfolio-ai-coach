@@ -52,11 +52,23 @@ serve(async (req) => {
       const data = await response.json();
       
       // Map Airtable fields to our app format
+      // Normalize "Étapes du parcours" which may be a long text or an array
+      const rawEtapes = data.fields['Étapes du parcours'] ?? data.fields['Etapes'] ?? data.fields['Étapes'] ?? data.fields['Etapes du parcours'];
+      console.log('Raw etapes value:', rawEtapes);
+      const etapes = Array.isArray(rawEtapes)
+        ? rawEtapes.map((v: any) => String(v)).filter((s: string) => s.trim().length > 0)
+        : typeof rawEtapes === 'string'
+          ? rawEtapes
+              .split(/\r?\n|•|-/)
+              .map((s: string) => s.trim())
+              .filter((s: string) => s.length > 0)
+          : [];
+
       const result = {
         id: data.id,
         prenom: data.fields['Prénom'] || '',
         objectif: data.fields['Objectif'] || '',
-        etapes: data.fields['Etapes'] || [],
+        etapes,
         feedback: data.fields['Feedback IA'] || '',
         image: data.fields['image']?.[0]?.url || '',
         created: data.createdTime,
