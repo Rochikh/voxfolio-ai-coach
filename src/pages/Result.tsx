@@ -13,6 +13,7 @@ interface ResultData {
   prenom: string;
   objectif: string;
   etapes: string[];
+  transcription: string;
 }
 
 const Result = () => {
@@ -43,7 +44,8 @@ const Result = () => {
           feedback: data.feedback || '',
           prenom: data.prenom || '',
           objectif: data.objectif || '',
-          etapes: Array.isArray(data.etapes) ? data.etapes : []
+          etapes: Array.isArray(data.etapes) ? data.etapes : [],
+          transcription: data.transcription || ''
         });
         setLoading(false);
       } catch (error) {
@@ -151,6 +153,14 @@ const Result = () => {
               </div>
               <p className="text-foreground leading-relaxed">{resultData.feedback}</p>
             </Card>
+
+            {/* Transcription */}
+            {resultData.transcription && (
+              <Card className="p-6 bg-muted/30">
+                <h3 className="text-lg font-semibold mb-3">Enregistrement</h3>
+                <p className="text-foreground leading-relaxed italic">"{resultData.transcription}"</p>
+              </Card>
+            )}
 
             {/* Details */}
             <Card className="p-6">

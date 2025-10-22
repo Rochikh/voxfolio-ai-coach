@@ -69,6 +69,7 @@ serve(async (req) => {
         prenom: data.fields['Prénom'] || '',
         objectif: data.fields['Objectif'] || '',
         etapes,
+        transcription: data.fields['Transcription'] || '',
         feedback: data.fields['Feedback IA'] || '',
         image: data.fields['image']?.[0]?.url || '',
         created: data.createdTime,
