@@ -179,14 +179,13 @@ const Result = () => {
 
                 <div>
                   <Badge className="mb-2">Étapes du parcours</Badge>
-                  <ul className="space-y-2 mt-2">
+                  <ol className="space-y-3 mt-3 list-decimal list-inside">
                     {resultData.etapes.map((etape, index) => (
-                      <li key={index} className="flex gap-2">
-                        <span className="text-primary font-semibold">{index + 1}.</span>
-                        <span className="text-foreground">{etape}</span>
+                      <li key={index} className="text-foreground pl-2 marker:text-primary marker:font-bold">
+                        {etape}
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
               </div>
             </Card>
