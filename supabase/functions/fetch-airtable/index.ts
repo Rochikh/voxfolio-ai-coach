@@ -55,14 +55,24 @@ serve(async (req) => {
       // Normalize "Étapes du parcours" which may be a long text or an array
       const rawEtapes = data.fields['Étapes du parcours'] ?? data.fields['Etapes'] ?? data.fields['Étapes'] ?? data.fields['Etapes du parcours'];
       console.log('Raw etapes value:', rawEtapes);
-      const etapes = Array.isArray(rawEtapes)
-        ? rawEtapes.map((v: any) => String(v)).filter((s: string) => s.trim().length > 0)
-        : typeof rawEtapes === 'string'
-          ? rawEtapes
-              .split(/\r?\n|•|-/)
-              .map((s: string) => s.trim())
-              .filter((s: string) => s.length > 0)
-          : [];
+      let etapes: string[] = [];
+      if (Array.isArray(rawEtapes)) {
+        // If it's an array, process each element
+        etapes = rawEtapes.flatMap((v: any) => {
+          const str = String(v);
+          // Check if single element contains comma-separated values
+          if (str.includes(',')) {
+            return str.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+          }
+          return str.trim().length > 0 ? [str.trim()] : [];
+        });
+      } else if (typeof rawEtapes === 'string') {
+        // If it's a string, split by common separators
+        etapes = rawEtapes
+          .split(/\r?\n|•|-|,/)
+          .map((s: string) => s.trim())
+          .filter((s: string) => s.length > 0);
+      }
 
       const result = {
         id: data.id,
