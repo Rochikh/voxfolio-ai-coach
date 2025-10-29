@@ -181,7 +181,7 @@ const Result = () => {
                   <Badge className="mb-2">Étapes du parcours</Badge>
                   <ol className="space-y-3 mt-3 list-decimal list-inside">
                     {resultData.etapes.map((etape, index) => (
-                      <li key={index} className="text-foreground pl-2 marker:text-primary marker:font-bold">
+                      <li key={index} className="text-foreground pl-2 marker:text-primary marker:font-bold break-words">
                         {etape}
                       </li>
                     ))}
