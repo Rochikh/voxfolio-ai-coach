@@ -38,7 +38,7 @@ export default function Help() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="bg-card rounded-lg shadow-lg p-8">
           <h1 className="text-4xl font-bold mb-6 text-primary">Guide d'utilisation Voxfolio</h1>
-          <p className="text-lg text-muted-foreground mb-8">Pour les formateurs</p>
+          <p className="text-lg text-muted-foreground mb-8">Pour les formateur·rice·s</p>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 text-foreground">1. Connexion à la plateforme</h2>
@@ -49,7 +49,7 @@ export default function Help() {
               <li>Cliquez sur "S'inscrire"</li>
               <li>Renseignez vos informations : Prénom, Nom, Email professionnel, Mot de passe sécurisé</li>
               <li>Validez votre inscription</li>
-              <li>Vous serez automatiquement connecté avec le rôle "Enseignant"</li>
+              <li>Vous serez automatiquement connecté·e avec le rôle "Enseignant·e"</li>
             </ol>
 
             <h3 className="text-xl font-medium mb-3 text-foreground">Connexions suivantes</h3>
@@ -67,21 +67,21 @@ export default function Help() {
                 <span className="text-2xl">📱</span>
                 <div>
                   <h4 className="font-semibold text-foreground">Générer des QR Codes</h4>
-                  <p className="text-muted-foreground">Créez des QR codes pour vos classes afin que vos apprenants puissent accéder facilement à la plateforme.</p>
+                  <p className="text-muted-foreground">Créez des QR codes pour vos classes afin que vos apprenant·e·s puissent accéder facilement à la plateforme.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="text-2xl">👥</span>
                 <div>
                   <h4 className="font-semibold text-foreground">Gérer vos classes</h4>
-                  <p className="text-muted-foreground">Créez, modifiez et organisez vos groupes d'apprenants.</p>
+                  <p className="text-muted-foreground">Créez, modifiez et organisez vos groupes d'apprenant·e·s.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <span className="text-2xl">🎨</span>
                 <div>
                   <h4 className="font-semibold text-foreground">Voir les productions</h4>
-                  <p className="text-muted-foreground">Consultez les portfolios créés par vos apprenants.</p>
+                  <p className="text-muted-foreground">Consultez les portfolios créés par vos apprenant·e·s.</p>
                 </div>
               </div>
             </div>
@@ -110,7 +110,7 @@ export default function Help() {
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 text-foreground">4. Génération de QR Codes</h2>
-            <p className="mb-4 text-foreground">Les QR codes permettent à vos apprenants d'accéder facilement à la plateforme de capture.</p>
+            <p className="mb-4 text-foreground">Les QR codes permettent à vos apprenant·e·s d'accéder facilement à la plateforme de capture.</p>
             
             <h3 className="text-xl font-medium mb-3 text-foreground">Générer un QR code</h3>
             <ol className="list-decimal list-inside space-y-2 mb-4 text-foreground">
@@ -123,8 +123,8 @@ export default function Help() {
             <h3 className="text-xl font-medium mb-3 text-foreground">Utilisation du QR code</h3>
             <ul className="list-disc list-inside space-y-2 text-foreground">
               <li>Affichez le QR code en classe (projecteur, impression)</li>
-              <li>Les apprenants scannent le code avec leur smartphone</li>
-              <li>Ils sont dirigés vers la page de capture pour enregistrer leur présentation</li>
+              <li>Les apprenant·e·s scannent le code avec leur smartphone</li>
+              <li>Ils·elles sont dirigé·e·s vers la page de capture pour enregistrer leur présentation</li>
             </ul>
           </section>
 
@@ -139,18 +139,19 @@ export default function Help() {
             </ol>
 
             <h3 className="text-xl font-medium mb-3 text-foreground">Que contiennent les productions ?</h3>
-            <p className="mb-3 text-foreground">Chaque production générée par un apprenant contient :</p>
+            <p className="mb-3 text-foreground">Chaque production générée par un·e apprenant·e contient :</p>
             <ul className="list-disc list-inside space-y-2 text-foreground">
               <li><strong>Un visuel professionnel</strong> généré par IA</li>
               <li><strong>Un feedback détaillé</strong> sur la présentation orale</li>
               <li><strong>La transcription</strong> complète de l'enregistrement</li>
               <li><strong>Les étapes du parcours</strong> extraites automatiquement</li>
             </ul>
+            <p className="mt-3 text-sm text-muted-foreground italic">Note : L'enregistrement audio complet est stocké de manière sécurisée dans la base de données de l'administrateur·rice et n'est pas accessible publiquement.</p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Processus pour l'apprenant</h2>
-            <p className="mb-3 text-foreground">Comment un apprenant crée son portfolio :</p>
+            <h2 className="text-2xl font-semibold mb-4 text-foreground">6. Processus pour l'apprenant·e</h2>
+            <p className="mb-3 text-foreground">Comment un·e apprenant·e crée son portfolio :</p>
             <ol className="list-decimal list-inside space-y-2 text-foreground">
               <li><strong>Scan du QR code</strong> généré par le formateur</li>
               <li><strong>Accès à la page de capture</strong></li>
@@ -177,7 +178,7 @@ export default function Help() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold mb-4 text-foreground">7. Conseils pédagogiques</h2>
             
-            <h3 className="text-xl font-medium mb-3 text-foreground">Préparer vos apprenants</h3>
+            <h3 className="text-xl font-medium mb-3 text-foreground">Préparer vos apprenant·e·s</h3>
             <p className="mb-3 text-foreground">Expliquez l'objectif : créer un portfolio professionnel valorisant.</p>
             <p className="mb-2 text-foreground">Donnez des conseils pour l'enregistrement :</p>
             <ul className="list-disc list-inside space-y-2 mb-4 text-foreground">
@@ -190,7 +191,7 @@ export default function Help() {
             <h3 className="text-xl font-medium mb-3 text-foreground">Exploiter les résultats</h3>
             <ul className="list-disc list-inside space-y-2 text-foreground">
               <li>Utilisez les feedbacks IA comme base de discussion</li>
-              <li>Encouragez les apprenants à itérer et améliorer</li>
+              <li>Encouragez les apprenant·e·s à itérer et améliorer</li>
               <li>Les visuels peuvent être utilisés pour des CV ou profils LinkedIn</li>
               <li>Les transcriptions aident à identifier les points d'amélioration</li>
             </ul>
@@ -212,7 +213,7 @@ export default function Help() {
               
               <div>
                 <h4 className="font-semibold text-foreground mb-1">Q : Puis-je modifier un portfolio après sa création ?</h4>
-                <p className="text-muted-foreground">R : Les apprenants peuvent créer de nouveaux portfolios à tout moment.</p>
+                <p className="text-muted-foreground">R : Les apprenant·e·s peuvent créer de nouveaux portfolios à tout moment.</p>
               </div>
               
               <div>
@@ -228,14 +229,27 @@ export default function Help() {
             <h3 className="text-xl font-medium mb-3 text-foreground">En cas de problème</h3>
             <ul className="list-disc list-inside space-y-2 text-foreground">
               <li>Vérifiez votre connexion internet</li>
-              <li>Assurez-vous que les apprenants ont autorisé l'accès au microphone</li>
+              <li>Assurez-vous que les apprenant·e·s ont autorisé l'accès au microphone</li>
               <li>Les enregistrements peuvent prendre quelques minutes à être traités</li>
             </ul>
           </section>
 
-          <div className="mt-12 pt-6 border-t border-border text-center">
-            <p className="text-lg font-semibold text-primary">Voxfolio</p>
-            <p className="text-muted-foreground">Transformez la voix en portfolio professionnel 🎙️✨</p>
+          <div className="mt-12 pt-6 border-t border-border">
+            <div className="text-center mb-6">
+              <p className="text-lg font-semibold text-primary">Voxfolio</p>
+              <p className="text-muted-foreground">Transformez la voix en portfolio professionnel 🎙️✨</p>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-6 space-y-3">
+              <p className="text-sm text-foreground font-medium">
+                © Rochane Kherbouche - Tous droits réservés
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Cette application et son contenu sont la propriété intellectuelle de Rochane Kherbouche. 
+                Toute utilisation, reproduction ou distribution, en partie ou en totalité, à des fins commerciales 
+                est strictement interdite sans autorisation écrite préalable de l'auteur·rice. 
+                Ce projet peut faire l'objet d'une commercialisation future.
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
-# Guide d'utilisation Voxfolio - Pour les formateurs
+# Guide d'utilisation Voxfolio - Pour les formateur·rice·s
 
 ## Bienvenue sur Voxfolio
 
-Voxfolio est une plateforme qui permet à vos apprenants de créer des portfolios professionnels à partir d'enregistrements vocaux, analysés par intelligence artificielle.
+Voxfolio est une plateforme qui permet à vos apprenant·e·s de créer des portfolios professionnels à partir d'enregistrements vocaux, analysés par intelligence artificielle.
 
 ---
 
@@ -17,7 +17,7 @@ Voxfolio est une plateforme qui permet à vos apprenants de créer des portfolio
    - Email professionnel
    - Mot de passe sécurisé
 4. Validez votre inscription
-5. Vous serez automatiquement connecté avec le rôle "Enseignant"
+5. Vous serez automatiquement connecté·e avec le rôle "Enseignant·e"
 
 ### Connexions suivantes
 1. Entrez votre email et mot de passe
@@ -30,13 +30,13 @@ Voxfolio est une plateforme qui permet à vos apprenants de créer des portfolio
 Après connexion, vous accédez à votre tableau de bord qui présente trois fonctionnalités principales :
 
 ### 📱 Générer des QR Codes
-Créez des QR codes pour vos classes afin que vos apprenants puissent accéder facilement à la plateforme.
+Créez des QR codes pour vos classes afin que vos apprenant·e·s puissent accéder facilement à la plateforme.
 
 ### 👥 Gérer vos classes
-Créez, modifiez et organisez vos groupes d'apprenants.
+Créez, modifiez et organisez vos groupes d'apprenant·e·s.
 
 ### 🎨 Voir les productions
-Consultez les portfolios créés par vos apprenants.
+Consultez les portfolios créés par vos apprenant·e·s.
 
 ---
 
@@ -60,7 +60,7 @@ Consultez les portfolios créés par vos apprenants.
 
 ## 4. Génération de QR Codes
 
-Les QR codes permettent à vos apprenants d'accéder facilement à la plateforme de capture.
+Les QR codes permettent à vos apprenant·e·s d'accéder facilement à la plateforme de capture.
 
 ### Générer un QR code
 1. Accédez à la page "QR Code" via le menu
@@ -70,8 +70,8 @@ Les QR codes permettent à vos apprenants d'accéder facilement à la plateforme
 
 ### Utilisation du QR code
 - Affichez le QR code en classe (projecteur, impression)
-- Les apprenants scannent le code avec leur smartphone
-- Ils sont dirigés vers la page de capture pour enregistrer leur présentation
+- Les apprenant·e·s scannent le code avec leur smartphone
+- Ils·elles sont dirigé·e·s vers la page de capture pour enregistrer leur présentation
 
 ---
 
@@ -83,19 +83,21 @@ Les QR codes permettent à vos apprenants d'accéder facilement à la plateforme
 3. Consultez la liste des portfolios créés
 
 ### Que contiennent les productions ?
-Chaque production générée par un apprenant contient :
+Chaque production générée par un·e apprenant·e contient :
 - **Un visuel professionnel** généré par IA
 - **Un feedback détaillé** sur la présentation orale
 - **La transcription** complète de l'enregistrement
 - **Les étapes du parcours** extraites automatiquement
 
+**Note importante :** L'enregistrement audio complet est stocké de manière sécurisée dans la base de données de l'administrateur·rice et n'est pas accessible publiquement.
+
 ---
 
-## 6. Processus pour l'apprenant
+## 6. Processus pour l'apprenant·e
 
-### Comment un apprenant crée son portfolio :
+### Comment un·e apprenant·e crée son portfolio :
 
-1. **Scan du QR code** généré par le formateur
+1. **Scan du QR code** généré par le·la formateur·rice
 2. **Accès à la page de capture**
 3. **Enregistrement vocal** de sa présentation (parcours, compétences, projets)
 4. **Traitement IA** automatique :
@@ -113,9 +115,9 @@ Chaque production générée par un apprenant contient :
 
 ## 7. Fonctionnalités administratives
 
-### Pour les administrateurs uniquement
+### Pour les administrateur·rice·s uniquement
 Si vous avez un accès administrateur, un bouton "Admin" apparaît dans le menu de navigation, vous donnant accès à :
-- La gestion globale des utilisateurs
+- La gestion globale des utilisateur·rice·s
 - Les statistiques d'utilisation
 - Les paramètres avancés de la plateforme
 
@@ -123,7 +125,7 @@ Si vous avez un accès administrateur, un bouton "Admin" apparaît dans le menu 
 
 ## 8. Conseils pédagogiques
 
-### Préparer vos apprenants
+### Préparer vos apprenant·e·s
 - Expliquez l'objectif : créer un portfolio professionnel valorisant
 - Donnez des conseils pour l'enregistrement :
   - Parler clairement et distinctement
@@ -133,7 +135,7 @@ Si vous avez un accès administrateur, un bouton "Admin" apparaît dans le menu 
 
 ### Exploiter les résultats
 - Utilisez les feedbacks IA comme base de discussion
-- Encouragez les apprenants à itérer et améliorer
+- Encouragez les apprenant·e·s à itérer et améliorer
 - Les visuels peuvent être utilisés pour des CV ou profils LinkedIn
 - Les transcriptions aident à identifier les points d'amélioration
 
@@ -143,7 +145,7 @@ Si vous avez un accès administrateur, un bouton "Admin" apparaît dans le menu 
 
 ### En cas de problème
 - Vérifiez votre connexion internet
-- Assurez-vous que les apprenants ont autorisé l'accès au microphone
+- Assurez-vous que les apprenant·e·s ont autorisé l'accès au microphone
 - Les enregistrements peuvent prendre quelques minutes à être traités
 
 ### Questions fréquentes
@@ -155,7 +157,7 @@ R : Il n'y a pas de limite au nombre de classes.
 R : Non, les QR codes sont permanents et peuvent être réutilisés.
 
 **Q : Puis-je modifier un portfolio après sa création ?**
-R : Les apprenants peuvent créer de nouveaux portfolios à tout moment.
+R : Les apprenant·e·s peuvent créer de nouveaux portfolios à tout moment.
 
 **Q : Où sont stockées les données ?**
 R : Toutes les données sont stockées de manière sécurisée dans le cloud.
@@ -166,8 +168,14 @@ R : Toutes les données sont stockées de manière sécurisée dans le cloud.
 
 Pour vous déconnecter en toute sécurité :
 1. Cliquez sur le bouton "Déconnexion" dans le menu de navigation
-2. Vous serez redirigé vers la page de connexion
+2. Vous serez redirigé·e vers la page de connexion
 
 ---
 
 **Voxfolio** - Transformez la voix en portfolio professionnel 🎙️✨
+
+---
+
+© Rochane Kherbouche - Tous droits réservés
+
+Cette application et son contenu sont la propriété intellectuelle de Rochane Kherbouche. Toute utilisation, reproduction ou distribution, en partie ou en totalité, à des fins commerciales est strictement interdite sans autorisation écrite préalable de l'auteur·rice. Ce projet peut faire l'objet d'une commercialisation future.
