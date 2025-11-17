@@ -1,9 +1,40 @@
 import { TeacherNav } from "@/components/TeacherNav";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function Help() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-background">
-      <TeacherNav />
+      {user ? (
+        <TeacherNav />
+      ) : (
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h1 
+                className="text-xl font-bold cursor-pointer hover:text-primary transition-colors"
+                onClick={() => navigate('/')}
+              >
+                Voxfolio
+              </h1>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/')}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Retour
+              </Button>
+            </div>
+          </div>
+        </header>
+      )}
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="bg-card rounded-lg shadow-lg p-8">
           <h1 className="text-4xl font-bold mb-6 text-primary">Guide d'utilisation Voxfolio</h1>
