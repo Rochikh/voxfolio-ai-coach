@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import QRGenerator from "./pages/QRGenerator";
 import Classes from "./pages/Classes";
 import Admin from "./pages/Admin";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/qr-generator" element={<QRGenerator />} />
           <Route path="/classes" element={<Classes />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/help" element={<Help />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
