@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, QrCode, Users, BookOpen, Shield } from 'lucide-react';
+import { LogOut, LayoutDashboard, QrCode, Users, BookOpen, Shield, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -78,6 +78,16 @@ export function TeacherNav() {
               >
                 <BookOpen className="h-4 w-4" />
                 Productions
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/help')}
+                className="gap-2"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Aide
               </Button>
               
               {user?.email === "contact@rochane.fr" && (
