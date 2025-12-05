@@ -263,8 +263,7 @@ const Showcase = () => {
                 key={portfolio.id}
                 className="overflow-hidden cursor-pointer hover:shadow-primary transition-all duration-300 hover:scale-105 group"
                 onClick={() => {
-                  sessionStorage.setItem("airtableRecordId", portfolio.id);
-                  navigate("/result");
+                  navigate("/result", { state: { airtableRecordId: portfolio.id } });
                 }}
               >
                 <div className="aspect-square overflow-hidden bg-muted">
