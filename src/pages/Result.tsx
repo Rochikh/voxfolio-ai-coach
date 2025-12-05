@@ -180,8 +180,16 @@ const Result = () => {
                 <Sparkles className="w-5 h-5 text-accent" />
                 <h2 className="text-xl font-semibold">Feedback coach IA</h2>
               </div>
-              <div className="text-foreground leading-relaxed prose prose-sm max-w-none prose-strong:font-bold prose-strong:text-foreground">
-                <ReactMarkdown>{resultData.feedback}</ReactMarkdown>
+              <div className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-strong:font-semibold prose-strong:text-primary">
+                <ReactMarkdown
+                  components={{
+                    strong: ({ children }) => (
+                      <strong className="font-semibold text-primary">{children}</strong>
+                    ),
+                  }}
+                >
+                  {resultData.feedback}
+                </ReactMarkdown>
               </div>
             </Card>
 
