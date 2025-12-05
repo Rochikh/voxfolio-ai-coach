@@ -39,12 +39,6 @@ const Processing = () => {
     // Call Make.com webhook
     const processWithMake = async () => {
       try {
-        // Validate that audioUrl is a proper HTTPS URL
-        if (!audioUrl.startsWith('https://')) {
-          console.error("Invalid audio URL format");
-          throw new Error("Format d'URL audio invalide");
-        }
-
         // Get teacher UUID from state or from authenticated user
         let teacherUUID = teacherId;
         
@@ -59,6 +53,21 @@ const Processing = () => {
         // Generate unique learner UUID (session-based since learners don't have accounts)
         const learnerUUID = submissionId;
 
+        // Get signed URL for the audio file (bucket is now private)
+        const filePath = `${submissionId}.webm`;
+        const { data: signedUrlData, error: signedUrlError } = await supabase.functions.invoke(
+          "get-signed-audio-url",
+          { body: { filePath } }
+        );
+
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+          console.error("Error getting signed URL:", signedUrlError);
+          throw new Error("Impossible de générer l'URL sécurisée");
+        }
+
+        const secureAudioUrl = signedUrlData.signedUrl;
+        console.log("Got signed URL for audio file");
+
         // Real POST to Make.com with UUIDs and class info
         const response = await fetch(makeWebhookUrl, {
           method: "POST",
@@ -67,7 +76,7 @@ const Processing = () => {
           },
           body: JSON.stringify({
             submissionId,
-            audio_url: audioUrl,
+            audio_url: secureAudioUrl, // Use signed URL instead of public URL
             ID_Enseignant: teacherUUID || "default",
             ID_Utilisateur: learnerUUID,
             Classe_Nom: className || null,
