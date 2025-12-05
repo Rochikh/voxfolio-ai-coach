@@ -1,14 +1,24 @@
 project_id = "lfagpktbjzlyylbuwckk"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
 [functions.upload-audio]
 verify_jwt = false
 
 [functions.list-teachers]
 verify_jwt = false
 
+[functions.list-classes]
+verify_jwt = false
+
 [functions.fetch-airtable]
 verify_jwt = false
 
-[functions.list-classes]
+[functions.get-signed-audio-url]
 verify_jwt = false
 
