@@ -13,10 +13,9 @@ import type { ProcessingNavigationState } from "./Processing";
 // Normalize markdown text to ensure proper rendering
 const normalizeMarkdown = (text: string): string => {
   if (!text) return '';
-  // Replace any non-standard asterisks with standard ones
-  // and ensure proper spacing around markdown syntax
   return text
-    .replace(/\*\*/g, '**') // Normalize asterisks
+    .replace(/\\\*\\\*/g, '**') // Remove escaped asterisks \*\* -> **
+    .replace(/\\(\*\*)/g, '$1') // Handle \** -> **
     .replace(/\u2217\u2217/g, '**') // Replace unicode asterisks
     .trim();
 };
