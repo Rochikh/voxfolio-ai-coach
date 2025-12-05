@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mic, Upload, StopCircle, LayoutDashboard, AlertCircle } from "lucide-react";
+import { Mic, StopCircle, LayoutDashboard, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,7 @@ const Capture = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const MAX_RECORDING_TIME = 120; // 2 minutes
 
@@ -228,21 +229,10 @@ const Capture = () => {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type.startsWith("audio/")) {
-        setAudioBlob(file);
-        toast.success("Fichier audio chargé");
-      } else {
-        toast.error("Sélectionne un fichier audio");
-      }
-    }
-  };
 
   const handleSubmit = async () => {
     if (!audioBlob) {
-      toast.error("Enregistre ou uploade un audio");
+      toast.error("Enregistre un audio d'abord");
       return;
     }
 
@@ -256,9 +246,10 @@ const Capture = () => {
       return;
     }
 
-    try {
-      toast.info("Upload de votre audio en cours...");
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
+    try {
       // Use session ID from QR code if available, otherwise generate new one
       const sessionId = sessionStorage.getItem('sessionId') || `session-${Date.now()}`;
 
@@ -298,6 +289,8 @@ const Capture = () => {
     } catch (error) {
       console.error("Submit error:", error);
       toast.error("Erreur lors de l'upload. Réessaye.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -458,42 +451,22 @@ const Capture = () => {
             )}
           </div>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-card text-muted-foreground">ou</span>
-            </div>
-          </div>
-
-          {/* Upload Section */}
-          <div className="text-center">
-            <label htmlFor="audio-upload">
-              <div className="cursor-pointer p-8 border-2 border-dashed border-border rounded-lg hover:border-primary hover:bg-muted/50 transition-colors">
-                <Upload className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <p className="font-semibold mb-1">Uploader un fichier audio</p>
-                <p className="text-sm text-muted-foreground">MP3, WAV, WebM (max 2 min)</p>
-              </div>
-              <input
-                id="audio-upload"
-                type="file"
-                accept="audio/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
-          </div>
 
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
-            disabled={!audioBlob || !selectedTeacherId || (!selectedClassId && !lockedClass)}
+            disabled={!audioBlob || !selectedTeacherId || (!selectedClassId && !lockedClass) || isSubmitting}
             size="lg"
             className="w-full bg-gradient-primary hover:opacity-90 shadow-primary"
           >
-            Analyser mon audio
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Envoi en cours...
+              </>
+            ) : (
+              "Analyser mon audio"
+            )}
           </Button>
         </div>
       </Card>
