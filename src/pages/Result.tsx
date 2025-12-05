@@ -7,7 +7,19 @@ import { ArrowLeft, Download, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { ProcessingNavigationState } from "./Processing";
+
+// Normalize markdown text to ensure proper rendering
+const normalizeMarkdown = (text: string): string => {
+  if (!text) return '';
+  // Replace any non-standard asterisks with standard ones
+  // and ensure proper spacing around markdown syntax
+  return text
+    .replace(/\*\*/g, '**') // Normalize asterisks
+    .replace(/\u2217\u2217/g, '**') // Replace unicode asterisks
+    .trim();
+};
 
 interface ResultData {
   image: string;
@@ -182,13 +194,17 @@ const Result = () => {
               </div>
               <div className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-strong:font-semibold prose-strong:text-primary">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     strong: ({ children }) => (
                       <strong className="font-semibold text-primary">{children}</strong>
                     ),
+                    p: ({ children }) => (
+                      <p className="mb-2 last:mb-0">{children}</p>
+                    ),
                   }}
                 >
-                  {resultData.feedback}
+                  {normalizeMarkdown(resultData.feedback)}
                 </ReactMarkdown>
               </div>
             </Card>
