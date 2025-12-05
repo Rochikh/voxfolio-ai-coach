@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from "react-markdown";
 import type { ProcessingNavigationState } from "./Processing";
 
 interface ResultData {
@@ -179,7 +180,9 @@ const Result = () => {
                 <Sparkles className="w-5 h-5 text-accent" />
                 <h2 className="text-xl font-semibold">Feedback coach IA</h2>
               </div>
-              <p className="text-foreground leading-relaxed">{resultData.feedback}</p>
+              <div className="text-foreground leading-relaxed prose prose-sm max-w-none prose-strong:font-bold prose-strong:text-foreground">
+                <ReactMarkdown>{resultData.feedback}</ReactMarkdown>
+              </div>
             </Card>
 
             {/* Action */}
