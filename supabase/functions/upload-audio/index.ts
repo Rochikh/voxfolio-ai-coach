@@ -8,6 +8,34 @@ const corsHeaders: HeadersInit = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Simple in-memory rate limiting (resets on function cold start)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_REQUESTS_PER_WINDOW = 3; // 3 uploads per 5 minutes per IP
+
+function checkRateLimit(clientIP: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(clientIP);
+
+  if (!record || now > record.resetTime) {
+    rateLimitMap.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    return false;
+  }
+
+  record.count++;
+  return true;
+}
+
+// Validate sessionId format (alphanumeric, hyphens, underscores, max 100 chars)
+function isValidSessionId(sessionId: string): boolean {
+  if (!sessionId || sessionId.length > 100) return false;
+  return /^[a-zA-Z0-9_-]+$/.test(sessionId);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -16,6 +44,20 @@ serve(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Get client IP for rate limiting
+  const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() 
+    || req.headers.get("cf-connecting-ip") 
+    || "unknown";
+
+  // Check rate limit
+  if (!checkRateLimit(clientIP)) {
+    console.log(`Rate limit exceeded for IP: ${clientIP}`);
+    return new Response(JSON.stringify({ error: "Trop de requêtes. Réessayez dans quelques minutes." }), {
+      status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -53,6 +95,14 @@ serve(async (req: Request) => {
         });
       }
 
+      // Validate sessionId format
+      if (!isValidSessionId(sessionId)) {
+        return new Response(JSON.stringify({ error: "Invalid sessionId format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const binary = atob(fileBase64);
       const len = binary.length;
       fileBytes = new Uint8Array(len);
@@ -79,6 +129,14 @@ serve(async (req: Request) => {
 
       if (!file || !sessionId) {
         return new Response(JSON.stringify({ error: "Missing file or sessionId" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Validate sessionId format
+      if (!isValidSessionId(sessionId)) {
+        return new Response(JSON.stringify({ error: "Invalid sessionId format" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -129,7 +187,8 @@ serve(async (req: Request) => {
       });
 
     if (uploadError) {
-      return new Response(JSON.stringify({ error: uploadError.message }), {
+      console.error("Upload error:", uploadError.message);
+      return new Response(JSON.stringify({ error: "Erreur lors de l'upload" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -139,13 +198,16 @@ serve(async (req: Request) => {
       .from("audio-submissions")
       .getPublicUrl(path);
 
+    console.log(`Successfully uploaded audio for session: ${sessionId.substring(0, 20)}...`);
+
     return new Response(
       JSON.stringify({ publicUrl: pub.publicUrl, path }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
+    console.error("Unexpected error:", (e as Error).message);
     return new Response(
-      JSON.stringify({ error: (e as Error).message || "Unexpected error" }),
+      JSON.stringify({ error: "Erreur inattendue" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -21,6 +21,15 @@ interface Classe {
   nom: string;
 }
 
+// Navigation state interface for type safety
+export interface CaptureNavigationState {
+  audioUrl: string;
+  submissionId: string;
+  teacherId: string;
+  className?: string;
+  classId?: string;
+}
+
 const Capture = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -34,6 +43,8 @@ const Capture = () => {
   const [selectedClassId, setSelectedClassId] = useState("");
   const [lockedClass, setLockedClass] = useState<Classe | null>(null);
   const [isFromQR, setIsFromQR] = useState(false);
+  const [qrSessionId, setQrSessionId] = useState<string | null>(null);
+  const [selectedClassName, setSelectedClassName] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -63,27 +74,18 @@ const Capture = () => {
     const singleClass = searchParams.get('class');
     const multiClasses = searchParams.get('classes');
 
-    console.log('🔍 QR Code Parameters:', { 
-      teacherIdFromQR, 
-      sessionIdFromQR, 
-      singleClass, 
-      multiClasses 
-    });
-
     if (teacherIdFromQR) {
       setIsFromQR(true);
       setSelectedTeacherId(teacherIdFromQR);
-      sessionStorage.setItem('teacherId', teacherIdFromQR);
     }
     
     if (sessionIdFromQR) {
-      sessionStorage.setItem('sessionId', sessionIdFromQR);
+      setQrSessionId(sessionIdFromQR);
     }
 
     // Handle class parameters
     if (teacherIdFromQR && singleClass) {
       // Single class locked
-      console.log('📌 Loading locked class:', { teacherIdFromQR, singleClass });
       try {
         const { data, error } = await supabase.functions.invoke('list-classes', {
           body: {
@@ -92,26 +94,21 @@ const Capture = () => {
           }
         });
 
-        console.log('📊 Classes via function (locked):', { data, error });
-
         if (error) {
-          console.error('❌ Error loading locked class (fn):', error);
+          console.error('Error loading locked class:', error);
           toast.error('Classe introuvable');
         } else {
           const cls = (data as any)?.classes?.[0];
           if (!cls) {
-            console.warn('⚠️ No class data returned from function');
             toast.error('Classe introuvable');
           } else {
-            console.log('✅ Locked class set:', cls);
             setLockedClass(cls);
             setSelectedClassId(cls.id);
-            sessionStorage.setItem('classId', cls.id);
-            sessionStorage.setItem('className', cls.nom);
+            setSelectedClassName(cls.nom);
           }
         }
       } catch (error) {
-        console.error('❌ Exception loading locked class:', error);
+        console.error('Exception loading locked class:', error);
         toast.error('Erreur lors du chargement de la classe');
       }
     } else if (teacherIdFromQR && multiClasses) {
@@ -134,7 +131,7 @@ const Capture = () => {
             setClasses(list);
           }
         } catch (error) {
-          console.error('Error loading classes (fn):', error);
+          console.error('Error loading classes:', error);
         }
       }
     }
@@ -156,19 +153,17 @@ const Capture = () => {
   };
 
   const loadClasses = async (teacherId: string) => {
-    console.log('📚 Loading classes for teacher (fn):', teacherId);
     try {
       const { data, error } = await supabase.functions.invoke('list-classes', {
         body: { teacherId }
       });
 
       const classesData = (data as any)?.classes as { id: string; nom: string }[] | undefined;
-      console.log('📚 Classes loaded (fn):', { classesData, error, count: classesData?.length });
 
       if (error) throw error;
       setClasses(classesData || []);
     } catch (error) {
-      console.error('❌ Error loading classes (fn):', error);
+      console.error('Error loading classes:', error);
       toast.error('Erreur lors du chargement des classes');
     }
   };
@@ -177,8 +172,7 @@ const Capture = () => {
     setSelectedClassId(classId);
     const classe = classes.find(c => c.id === classId);
     if (classe) {
-      sessionStorage.setItem('classId', classe.id);
-      sessionStorage.setItem('className', classe.nom);
+      setSelectedClassName(classe.nom);
     }
   };
 
@@ -251,7 +245,7 @@ const Capture = () => {
 
     try {
       // Use session ID from QR code if available, otherwise generate new one
-      const sessionId = sessionStorage.getItem('sessionId') || `session-${Date.now()}`;
+      const sessionId = qrSessionId || `session-${Date.now()}`;
 
       // Convert Blob to base64 for edge function invoke
       const arrayBuffer = await audioBlob.arrayBuffer();
@@ -279,13 +273,17 @@ const Capture = () => {
         throw new Error("URL de fichier manquante");
       }
 
-      // Store public URL and teacher ID in sessionStorage for processing page
-      sessionStorage.setItem("audioUrl", publicUrl);
-      sessionStorage.setItem("submissionId", sessionId);
-      sessionStorage.setItem("teacherId", selectedTeacherId);
+      // Navigate with state instead of sessionStorage (security improvement)
+      const navigationState: CaptureNavigationState = {
+        audioUrl: publicUrl,
+        submissionId: sessionId,
+        teacherId: selectedTeacherId,
+        className: selectedClassName || undefined,
+        classId: selectedClassId || lockedClass?.id || undefined,
+      };
 
       toast.success("Audio uploadé avec succès!");
-      navigate("/processing");
+      navigate("/processing", { state: navigationState });
     } catch (error) {
       console.error("Submit error:", error);
       toast.error("Erreur lors de l'upload. Réessaye.");
