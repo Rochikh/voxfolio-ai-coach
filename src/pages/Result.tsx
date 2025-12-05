@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, Share2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { ProcessingNavigationState } from "./Processing";
 
 interface ResultData {
   image: string;
@@ -18,11 +19,14 @@ interface ResultData {
 
 const Result = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [resultData, setResultData] = useState<ResultData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const airtableRecordId = sessionStorage.getItem("airtableRecordId");
+    // Get airtableRecordId from navigation state (secure)
+    const state = location.state as ProcessingNavigationState | null;
+    const airtableRecordId = state?.airtableRecordId;
     
     if (!airtableRecordId) {
       navigate("/capture");
@@ -56,7 +60,7 @@ const Result = () => {
     };
 
     fetchResult();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const handleShare = () => {
     toast.success("Lien de partage copié !");

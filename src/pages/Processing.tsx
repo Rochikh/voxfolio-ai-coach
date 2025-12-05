@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, Sparkles, Image as ImageIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { CaptureNavigationState } from "./Capture";
+
+// Navigation state for Result page
+export interface ProcessingNavigationState {
+  airtableRecordId: string;
+}
 
 const Processing = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -16,16 +23,15 @@ const Processing = () => {
   ];
 
   useEffect(() => {
-    const audioUrl = sessionStorage.getItem("audioUrl");
-    const submissionId = sessionStorage.getItem("submissionId");
-    const teacherIdFromSession = sessionStorage.getItem("teacherId");
-    const className = sessionStorage.getItem("className");
-    const classId = sessionStorage.getItem("classId");
-
-    if (!audioUrl || !submissionId) {
+    // Get data from navigation state (secure) instead of sessionStorage
+    const state = location.state as CaptureNavigationState | null;
+    
+    if (!state?.audioUrl || !state?.submissionId) {
       navigate("/capture");
       return;
     }
+
+    const { audioUrl, submissionId, teacherId, className, classId } = state;
 
     // Webhook Make.com
     const makeWebhookUrl = "https://hook.eu1.make.com/v72ikpqnmgsbdzyvb9r3d03nrsqv14kx";
@@ -35,33 +41,23 @@ const Processing = () => {
       try {
         // Validate that audioUrl is a proper HTTPS URL
         if (!audioUrl.startsWith('https://')) {
-          console.error("Invalid audio URL format:", audioUrl);
+          console.error("Invalid audio URL format");
           throw new Error("Format d'URL audio invalide");
         }
 
-        console.log("Audio URL format validated:", audioUrl);
-
-        // Get teacher UUID from session storage (from QR code) or from authenticated user
-        let teacherUUID = teacherIdFromSession;
+        // Get teacher UUID from state or from authenticated user
+        let teacherUUID = teacherId;
         
         if (!teacherUUID) {
           // Fallback: try to get UUID from authenticated user
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            teacherUUID = user.id; // Use the actual UUID from Lovable Cloud
+            teacherUUID = user.id;
           }
         }
 
         // Generate unique learner UUID (session-based since learners don't have accounts)
         const learnerUUID = submissionId;
-
-        console.log("Sending to Make.com:", {
-          audio_url: audioUrl,
-          ID_Enseignant: teacherUUID,
-          ID_Utilisateur: learnerUUID,
-          Classe_Nom: className,
-          Classe_ID: classId
-        });
 
         // Real POST to Make.com with UUIDs and class info
         const response = await fetch(makeWebhookUrl, {
@@ -84,7 +80,6 @@ const Processing = () => {
         }
         
         const result = await response.json();
-        console.log("Make.com response:", result);
         
         // Progress simulation during processing
         let totalProgress = 0;
@@ -99,14 +94,13 @@ const Processing = () => {
 
           if (totalProgress >= 100) {
             clearInterval(interval);
-            // Store result from Make.com callback
-            if (result?.airtable_record_id) {
-              sessionStorage.setItem("airtableRecordId", result.airtable_record_id);
-            } else {
-              // Fallback pour test
-              sessionStorage.setItem("airtableRecordId", "rec_mock_" + submissionId);
-            }
-            setTimeout(() => navigate("/result"), 500);
+            
+            // Navigate with state instead of sessionStorage
+            const resultState: ProcessingNavigationState = {
+              airtableRecordId: result?.airtable_record_id || `rec_mock_${submissionId}`,
+            };
+            
+            setTimeout(() => navigate("/result", { state: resultState }), 500);
           }
         }, 200); // 20 seconds total (100 * 200ms)
 
@@ -119,7 +113,7 @@ const Processing = () => {
     };
 
     processWithMake();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const CurrentIcon = steps[currentStep].icon;
 
