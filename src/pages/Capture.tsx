@@ -46,7 +46,7 @@ const Capture = () => {
   const [qrSessionId, setQrSessionId] = useState<string | null>(null);
   const [selectedClassName, setSelectedClassName] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
