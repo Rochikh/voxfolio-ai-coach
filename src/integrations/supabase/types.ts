@@ -16,20 +16,26 @@ export type Database = {
     Tables: {
       classes: {
         Row: {
+          consignes_evaluation: string | null
           created_at: string | null
           id: string
+          matiere: string | null
           nom: string
           teacher_id: string
         }
         Insert: {
+          consignes_evaluation?: string | null
           created_at?: string | null
           id?: string
+          matiere?: string | null
           nom: string
           teacher_id: string
         }
         Update: {
+          consignes_evaluation?: string | null
           created_at?: string | null
           id?: string
+          matiere?: string | null
           nom?: string
           teacher_id?: string
         }
