@@ -28,3 +28,6 @@ verify_jwt = false
 
 [functions.get-submission-status]
 verify_jwt = false
+
+[functions.list-submissions]
+verify_jwt = false
