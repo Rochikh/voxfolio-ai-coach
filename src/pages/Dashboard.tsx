@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, BookOpen, QrCode } from 'lucide-react';
+import { Activity, Users, BookOpen, QrCode } from 'lucide-react';
 import { TeacherNav } from '@/components/TeacherNav';
 
 export default function Dashboard() {
@@ -12,6 +14,7 @@ export default function Dashboard() {
   const { user, loading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [isEnseignant, setIsEnseignant] = useState(false);
+  const stats = useDashboardStats();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -77,6 +80,74 @@ export default function Dashboard() {
             {isEnseignant ? 'Espace enseignant' : 'Votre compte'}
           </p>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="mr-2 h-5 w-5" />
+              Activité de la semaine
+            </CardTitle>
+            <CardDescription>(7 derniers jours)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!stats.loading &&
+            stats.weeklyDone === 0 &&
+            stats.inProgress === 0 &&
+            stats.errors === 0 ? (
+              <p className="text-center text-muted-foreground py-4">
+                Pas encore d'activité cette semaine. Génère un QR code pour démarrer.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  {stats.loading ? (
+                    <Skeleton className="h-10 w-16 mx-auto" />
+                  ) : (
+                    <div className="text-4xl font-bold">{stats.weeklyDone}</div>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">Cette semaine</p>
+                </div>
+
+                <div className="text-center">
+                  {stats.loading ? (
+                    <Skeleton className="h-10 w-16 mx-auto" />
+                  ) : (
+                    <div
+                      className={`text-4xl font-bold ${
+                        stats.inProgress > 0 ? 'text-blue-600' : ''
+                      }`}
+                    >
+                      {stats.inProgress}
+                    </div>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">En cours</p>
+                </div>
+
+                <div className="text-center">
+                  {stats.loading ? (
+                    <Skeleton className="h-10 w-16 mx-auto" />
+                  ) : stats.errors > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/showcase?status=error')}
+                      className="hover:opacity-80 transition-opacity"
+                    >
+                      <div className="text-4xl font-bold text-destructive">
+                        {stats.errors}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">En erreur</p>
+                    </button>
+                  ) : (
+                    <>
+                      <div className="text-4xl font-bold">{stats.errors}</div>
+                      <p className="text-sm text-muted-foreground mt-1">En erreur</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
