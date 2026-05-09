@@ -88,8 +88,12 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    // anonKey is a built-in env var in Supabase Edge Functions runtime.
+    // Used only for the HTTP trigger below (the gateway rejects service_role
+    // in Authorization headers on direct invocation).
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!supabaseUrl || !serviceKey) {
+    if (!supabaseUrl || !serviceKey || !anonKey) {
       console.error(LOG_PREFIX, "missing server configuration");
       return jsonResponse({ error: "Missing server configuration" }, 500);
     }
@@ -255,7 +259,7 @@ serve(async (req: Request) => {
     const triggerPromise = fetch(processUrl, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${serviceKey}`,
+        "Authorization": `Bearer ${anonKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ submission_id: submissionId }),

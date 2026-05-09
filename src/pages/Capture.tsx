@@ -10,15 +10,6 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-// Still imported by Processing.tsx; will be removed when Processing is reworked.
-export interface CaptureNavigationState {
-  audioUrl: string;
-  submissionId: string;
-  teacherId: string;
-  className?: string;
-  classId?: string;
-}
-
 const UUID_REGEX =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 

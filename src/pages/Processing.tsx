@@ -1,201 +1,254 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Loader2, Sparkles, Image as ImageIcon, MessageSquare } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import type { CaptureNavigationState } from "./Capture";
 
-// Navigation state for Result page
-export interface ProcessingNavigationState {
-  airtableRecordId: string;
-}
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+const POLL_INTERVAL_MS = 2000;
+const SLOW_TIMEOUT_MS = 90_000;
+const ROTATING_MESSAGE_INTERVAL_MS = 3500;
+const DONE_REDIRECT_DELAY_MS = 500;
+
+const ROTATING_MESSAGES = [
+  "Transcription de ton enregistrement…",
+  "Analyse de ta présentation…",
+  "Génération du feedback…",
+  "Création de ton illustration…",
+];
+
+const LOG_PREFIX = "[processing]";
+
+type SubmissionStatus = "pending" | "processing" | "done" | "error";
+
+type SubmissionPayload = {
+  status: SubmissionStatus;
+  error: string | null;
+  class_id: string | null;
+};
+
+type UiState =
+  | { kind: "invalid" }
+  | { kind: "loading" }
+  | { kind: "working"; status: "pending" | "processing"; slow: boolean }
+  | { kind: "done" }
+  | { kind: "error"; message: string; classId: string | null };
 
 const Processing = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [searchParams] = useSearchParams();
 
-  const steps = [
-    { icon: Sparkles, text: "Transcription de ton audio...", duration: 30 },
-    { icon: MessageSquare, text: "Analyse IA en cours...", duration: 35 },
-    { icon: ImageIcon, text: "Génération de ton visuel professionnel·le...", duration: 35 },
-  ];
+  const submissionId = useMemo(() => {
+    const raw = searchParams.get("id");
+    return raw && UUID_REGEX.test(raw) ? raw : null;
+  }, [searchParams]);
+
+  const [uiState, setUiState] = useState<UiState>(
+    submissionId ? { kind: "loading" } : { kind: "invalid" },
+  );
+  const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
-    // Get data from navigation state (secure) instead of sessionStorage
-    const state = location.state as CaptureNavigationState | null;
-    
-    if (!state?.audioUrl || !state?.submissionId) {
-      navigate("/capture");
-      return;
-    }
+    if (!submissionId) return;
 
-    const { audioUrl, submissionId, teacherId, className, classId } = state;
+    let cancelled = false;
+    let pollHandle: ReturnType<typeof setInterval> | null = null;
+    let slowHandle: ReturnType<typeof setTimeout> | null = null;
+    let doneRedirectHandle: ReturnType<typeof setTimeout> | null = null;
 
-    // Webhook Make.com
-    const makeWebhookUrl = "https://hook.eu1.make.com/v72ikpqnmgsbdzyvb9r3d03nrsqv14kx";
-    
-    // Call Make.com webhook
-    const processWithMake = async () => {
+    console.log(LOG_PREFIX, "start polling", submissionId);
+
+    const tick = async () => {
       try {
-        // Get teacher UUID from state or from authenticated user
-        let teacherUUID = teacherId;
-        
-        if (!teacherUUID) {
-          // Fallback: try to get UUID from authenticated user
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            teacherUUID = user.id;
-          }
-        }
-
-        // Generate unique learner UUID (session-based since learners don't have accounts)
-        const learnerUUID = submissionId;
-
-        // Get signed URL for the audio file (bucket is now private)
-        const filePath = `${submissionId}.webm`;
-        const { data: signedUrlData, error: signedUrlError } = await supabase.functions.invoke(
-          "get-signed-audio-url",
-          { body: { filePath } }
+        const { data, error } = await supabase.functions.invoke(
+          "get-submission-status",
+          { body: { id: submissionId } },
         );
 
-        if (signedUrlError || !signedUrlData?.signedUrl) {
-          console.error("Error getting signed URL:", signedUrlError);
-          throw new Error("Impossible de générer l'URL sécurisée");
+        if (cancelled) return;
+
+        if (error) {
+          console.error(LOG_PREFIX, "invoke error:", error);
+          return;
         }
 
-        const secureAudioUrl = signedUrlData.signedUrl;
-        console.log("Got signed URL for audio file");
-
-        // Real POST to Make.com with UUIDs and class info
-        const response = await fetch(makeWebhookUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            submissionId,
-            audio_url: secureAudioUrl, // Use signed URL instead of public URL
-            ID_Enseignant: teacherUUID || "default",
-            ID_Utilisateur: learnerUUID,
-            Classe_Nom: className || null,
-            Classe_ID: classId || null,
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Webhook error: ${response.status}`);
+        const payload = data as SubmissionPayload | null;
+        if (!payload) {
+          console.error(LOG_PREFIX, "empty payload");
+          return;
         }
-        
-        const result = await response.json();
-        
-        // Progress simulation during processing
-        let totalProgress = 0;
-        const interval = setInterval(() => {
-          totalProgress += 1;
-          setProgress(totalProgress);
 
-          // Update current step based on progress
-          if (totalProgress < 33) setCurrentStep(0);
-          else if (totalProgress < 66) setCurrentStep(1);
-          else setCurrentStep(2);
+        console.log(LOG_PREFIX, "tick status:", payload.status);
 
-          if (totalProgress >= 100) {
-            clearInterval(interval);
-            
-            // Navigate with state instead of sessionStorage
-            const resultState: ProcessingNavigationState = {
-              airtableRecordId: result?.airtable_record_id || `rec_mock_${submissionId}`,
-            };
-            
-            setTimeout(() => navigate("/result", { state: resultState }), 500);
-          }
-        }, 200); // 20 seconds total (100 * 200ms)
+        if (payload.status === "done") {
+          if (pollHandle) clearInterval(pollHandle);
+          pollHandle = null;
+          if (slowHandle) clearTimeout(slowHandle);
+          slowHandle = null;
+          setUiState({ kind: "done" });
+          doneRedirectHandle = setTimeout(() => {
+            if (!cancelled) {
+              console.log(LOG_PREFIX, "redirect /result", submissionId);
+              navigate(`/result?id=${submissionId}`);
+            }
+          }, DONE_REDIRECT_DELAY_MS);
+          return;
+        }
 
-        return () => clearInterval(interval);
-      } catch (error) {
-        console.error("Processing error:", error);
-        toast.error("Erreur lors du traitement. Veuillez réessayer.");
-        setTimeout(() => navigate("/capture"), 2000);
+        if (payload.status === "error") {
+          if (pollHandle) clearInterval(pollHandle);
+          pollHandle = null;
+          if (slowHandle) clearTimeout(slowHandle);
+          slowHandle = null;
+          setUiState({
+            kind: "error",
+            message: payload.error?.trim() || "Une erreur est survenue.",
+            classId: payload.class_id,
+          });
+          return;
+        }
+
+        // pending | processing : continuer le polling, conserver le flag slow
+        setUiState((prev) =>
+          prev.kind === "working"
+            ? { kind: "working", status: payload.status, slow: prev.slow }
+            : { kind: "working", status: payload.status, slow: false },
+        );
+      } catch (e) {
+        if (!cancelled) {
+          console.error(LOG_PREFIX, "tick exception:", e);
+        }
       }
     };
 
-    processWithMake();
-  }, [navigate, location.state]);
+    // Premier appel immédiat puis polling
+    tick();
+    pollHandle = setInterval(tick, POLL_INTERVAL_MS);
 
-  const CurrentIcon = steps[currentStep].icon;
+    slowHandle = setTimeout(() => {
+      if (cancelled) return;
+      console.log(LOG_PREFIX, "slow timeout reached");
+      setUiState((prev) =>
+        prev.kind === "working" ? { ...prev, slow: true } : prev,
+      );
+    }, SLOW_TIMEOUT_MS);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary-glow rounded-full blur-3xl animate-pulse-glow"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent rounded-full blur-3xl animate-pulse-glow" style={{ animationDelay: "1s" }}></div>
+    return () => {
+      cancelled = true;
+      if (pollHandle) clearInterval(pollHandle);
+      if (slowHandle) clearTimeout(slowHandle);
+      if (doneRedirectHandle) clearTimeout(doneRedirectHandle);
+      console.log(LOG_PREFIX, "cleanup", submissionId);
+    };
+  }, [submissionId, navigate]);
+
+  // Rotation du sous-message pendant l'attente
+  useEffect(() => {
+    if (uiState.kind !== "working" && uiState.kind !== "loading") return;
+    const id = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % ROTATING_MESSAGES.length);
+    }, ROTATING_MESSAGE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [uiState.kind]);
+
+  if (uiState.kind === "invalid") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Lien invalide</h1>
+          <p className="text-muted-foreground mb-6">
+            L'identifiant de la soumission est manquant ou incorrect.
+          </p>
+          <Button
+            onClick={() => navigate("/capture")}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            Retour à la capture
+          </Button>
+        </Card>
       </div>
+    );
+  }
 
-      <div className="relative z-10 text-center max-w-2xl mx-auto">
-        {/* Logo */}
-        <h1 className="text-5xl font-bold text-white mb-12 animate-float">
+  if (uiState.kind === "error") {
+    const captureHref = uiState.classId
+      ? `/capture?class=${uiState.classId}`
+      : "/capture";
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Une erreur est survenue</h1>
+          <p className="text-muted-foreground mb-6">{uiState.message}</p>
+          <Button
+            onClick={() => navigate(captureHref)}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            Retour à la capture
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (uiState.kind === "done") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-success/10 flex items-center justify-center mb-4">
+            <CheckCircle2 className="w-8 h-8 text-success" />
+          </div>
+          <h1 className="text-2xl font-bold">Analyse terminée !</h1>
+        </Card>
+      </div>
+    );
+  }
+
+  // working | loading
+  const slow = uiState.kind === "working" && uiState.slow;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+      <Card className="w-full max-w-md p-8 shadow-primary text-center">
+        <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-8">
           Voxfolio
         </h1>
 
-        {/* Main Icon */}
-        <div className="mb-8">
-          <div className="w-32 h-32 mx-auto rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center animate-pulse-glow border-4 border-white/20">
-            <CurrentIcon className="w-16 h-16 text-white" />
-          </div>
+        <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-6">
+          <Loader2 className="w-10 h-10 text-primary animate-spin" />
         </div>
 
-        {/* Current Step Text */}
-        <h2 className="text-2xl font-semibold text-white mb-8">
-          {steps[currentStep].text}
-        </h2>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-            <div
-              className="h-full bg-white rounded-full transition-all duration-300 ease-out shadow-glow"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <p className="text-white/80 mt-4 text-lg font-medium">{progress}%</p>
-        </div>
-
-        {/* Step Indicators */}
-        <div className="flex justify-center gap-6 mb-8">
-          {steps.map((step, index) => {
-            const StepIcon = step.icon;
-            return (
-              <div key={index} className="flex flex-col items-center gap-2">
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    index <= currentStep
-                      ? "bg-white text-primary scale-110"
-                      : "bg-white/20 text-white/60"
-                  }`}
-                >
-                  <StepIcon className="w-6 h-6" />
-                </div>
-                <span className={`text-xs ${index <= currentStep ? "text-white font-semibold" : "text-white/60"}`}>
-                  Étape {index + 1}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Encouraging Message */}
-        <p className="text-white/90 text-lg max-w-md mx-auto">
-          Ton IA travaille pour créer ton portfolio professionnel·le augmenté...
+        <h2 className="text-xl font-semibold mb-2">Analyse en cours…</h2>
+        <p className="text-muted-foreground min-h-[1.5rem]">
+          {ROTATING_MESSAGES[messageIndex]}
         </p>
 
-        {/* Loading Spinner */}
-        <div className="mt-8">
-          <Loader2 className="w-8 h-8 text-white mx-auto animate-spin" />
-        </div>
-      </div>
+        {slow && (
+          <div className="mt-8 pt-6 border-t border-border space-y-4">
+            <div className="flex items-start gap-3 text-left">
+              <Clock className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">
+                Le traitement prend plus de temps que prévu. Tu peux continuer
+                d'attendre ou consulter les détails dès qu'ils sont prêts.
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate(`/result?id=${submissionId}`)}
+              variant="outline"
+              className="w-full"
+            >
+              Voir les détails
+            </Button>
+          </div>
+        )}
+      </Card>
     </div>
   );
 };

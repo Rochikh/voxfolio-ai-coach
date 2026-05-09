@@ -22,3 +22,9 @@ verify_jwt = false
 [functions.get-signed-audio-url]
 verify_jwt = false
 
+
+[functions.process-submission]
+verify_jwt = false
+
+[functions.get-submission-status]
+verify_jwt = false

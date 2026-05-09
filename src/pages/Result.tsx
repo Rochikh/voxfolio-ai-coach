@@ -1,113 +1,251 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Share2, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Download,
+  Share2,
+  Sparkles,
+  ThumbsUp,
+  Target,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import type { ProcessingNavigationState } from "./Processing";
 
-// Normalize markdown text to ensure proper rendering
-const normalizeMarkdown = (text: string): string => {
-  if (!text) return '';
-  return text
-    .replace(/\\\*\\\*/g, '**') // Remove escaped asterisks \*\* -> **
-    .replace(/\\(\*\*)/g, '$1') // Handle \** -> **
-    .replace(/\u2217\u2217/g, '**') // Replace unicode asterisks
-    .trim();
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+const LOG_PREFIX = "[result]";
+
+type SubmissionStatus = "pending" | "processing" | "done" | "error";
+
+type FeedbackPoint = { titre: string; description: string };
+type FeedbackAxis = { titre: string; description: string; conseil: string };
+
+type FeedbackJson = {
+  score_global: number;
+  synthese: string;
+  points_forts: FeedbackPoint[];
+  axes_amelioration: FeedbackAxis[];
+  transcription_corrigee: string;
+  prompt_image: string;
+  duree_secondes: number;
+  nombre_mots: number;
+  debit_mots_par_minute: number;
 };
 
-interface ResultData {
-  image: string;
-  feedback: string;
-  prenom: string;
-  objectif: string;
-  etapes: string[];
-  transcription: string;
-}
+type SubmissionPayload = {
+  status: SubmissionStatus;
+  error: string | null;
+  class_id: string | null;
+  student_name: string | null;
+  transcription: string | null;
+  feedback: FeedbackJson | null;
+  avatar_url: string | null;
+};
+
+type LoadState =
+  | { kind: "invalid" }
+  | { kind: "loading" }
+  | { kind: "ready"; data: SubmissionPayload }
+  | { kind: "error"; message: string; classId: string | null };
+
+const formatScore = (score: number): string => {
+  if (!Number.isFinite(score)) return "—";
+  return Number.isInteger(score) ? `${score}` : score.toFixed(1);
+};
+
+const formatDuration = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins === 0) return `${secs}s`;
+  return `${mins}min ${secs.toString().padStart(2, "0")}s`;
+};
 
 const Result = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [resultData, setResultData] = useState<ResultData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+
+  const submissionId = useMemo(() => {
+    const raw = searchParams.get("id");
+    return raw && UUID_REGEX.test(raw) ? raw : null;
+  }, [searchParams]);
+
+  const [state, setState] = useState<LoadState>(
+    submissionId ? { kind: "loading" } : { kind: "invalid" },
+  );
 
   useEffect(() => {
-    // Get airtableRecordId from navigation state (secure)
-    const state = location.state as ProcessingNavigationState | null;
-    const airtableRecordId = state?.airtableRecordId;
-    
-    if (!airtableRecordId) {
-      navigate("/capture");
-      return;
-    }
+    if (!submissionId) return;
+
+    let cancelled = false;
+    console.log(LOG_PREFIX, "fetch", submissionId);
 
     const fetchResult = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('fetch-airtable', {
-          body: { 
-            recordId: airtableRecordId 
-          }
-        });
+        const { data, error } = await supabase.functions.invoke(
+          "get-submission-status",
+          { body: { id: submissionId } },
+        );
 
-        if (error) throw error;
+        if (cancelled) return;
 
-        setResultData({
-          image: data.image || "https://images.unsplash.com/photo-1649972904349-6e44c42644a7?w=800&h=800&fit=crop",
-          feedback: data.feedback || '',
-          prenom: data.prenom || '',
-          objectif: data.objectif || '',
-          etapes: Array.isArray(data.etapes) ? data.etapes : [],
-          transcription: data.transcription || ''
+        if (error) {
+          console.error(LOG_PREFIX, "invoke error:", error);
+          setState({
+            kind: "error",
+            message: "Impossible de charger le résultat. Réessaie plus tard.",
+            classId: null,
+          });
+          return;
+        }
+
+        const payload = data as SubmissionPayload | null;
+        if (!payload) {
+          setState({
+            kind: "error",
+            message: "Réponse serveur vide.",
+            classId: null,
+          });
+          return;
+        }
+
+        if (payload.status === "pending" || payload.status === "processing") {
+          console.log(LOG_PREFIX, "status pending/processing → /processing");
+          navigate(`/processing?id=${submissionId}`, { replace: true });
+          return;
+        }
+
+        if (payload.status === "error") {
+          setState({
+            kind: "error",
+            message: payload.error?.trim() || "Une erreur est survenue.",
+            classId: payload.class_id,
+          });
+          return;
+        }
+
+        // status === "done"
+        if (!payload.feedback) {
+          setState({
+            kind: "error",
+            message: "Résultat incomplet.",
+            classId: payload.class_id,
+          });
+          return;
+        }
+
+        setState({ kind: "ready", data: payload });
+      } catch (e) {
+        if (cancelled) return;
+        console.error(LOG_PREFIX, "exception:", e);
+        setState({
+          kind: "error",
+          message: "Erreur réseau.",
+          classId: null,
         });
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching result:", error);
-        toast.error("Erreur lors du chargement des résultats");
-        navigate("/capture");
       }
     };
 
     fetchResult();
-  }, [navigate, location.state]);
 
-  const handleShare = () => {
-    toast.success("Lien de partage copié !");
+    return () => {
+      cancelled = true;
+    };
+  }, [submissionId, navigate]);
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Lien de partage copié !");
+    } catch {
+      toast.error("Impossible de copier le lien");
+    }
   };
 
-  const handleDownload = async () => {
-    if (!resultData?.image) return;
-    
+  const handleDownload = async (avatarUrl: string, prenom: string) => {
     try {
-      const response = await fetch(resultData.image);
+      const response = await fetch(avatarUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `portfolio-${resultData.prenom || 'voxfolio'}.jpg`;
+      a.download = `portfolio-${prenom || "voxfolio"}.jpg`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast.success("Image téléchargée !");
-    } catch (error) {
-      console.error('Download error:', error);
+    } catch (e) {
+      console.error(LOG_PREFIX, "download error:", e);
       toast.error("Erreur lors du téléchargement");
     }
   };
 
-  if (loading) {
+  if (state.kind === "invalid") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
-        <div className="animate-spin">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Lien invalide</h1>
+          <p className="text-muted-foreground mb-6">
+            L'identifiant du résultat est manquant ou incorrect.
+          </p>
+          <Button
+            onClick={() => navigate("/capture")}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            Retour à la capture
+          </Button>
+        </Card>
       </div>
     );
   }
 
-  if (!resultData) return null;
+  if (state.kind === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (state.kind === "error") {
+    const captureHref = state.classId
+      ? `/capture?class=${state.classId}`
+      : "/capture";
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertCircle className="w-8 h-8 text-destructive" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Une erreur est survenue</h1>
+          <p className="text-muted-foreground mb-6">{state.message}</p>
+          <Button
+            onClick={() => navigate(captureHref)}
+            className="bg-gradient-primary hover:opacity-90"
+          >
+            Retour à la capture
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // ready
+  const { data } = state;
+  const feedback = data.feedback!;
+  const prenom = data.student_name || "";
+  const transcription =
+    feedback.transcription_corrigee?.trim() || data.transcription?.trim() || "";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background py-12 px-4">
@@ -115,100 +253,149 @@ const Result = () => {
         {/* Header */}
         <div className="mb-8">
           <Button
-            onClick={() => navigate("/showcase")}
+            onClick={() => navigate("/capture")}
             variant="ghost"
             className="gap-2 mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            Retour à la vitrine
+            Nouvelle capture
           </Button>
           <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Ton portfolio augmenté
           </h1>
           <p className="text-muted-foreground mt-2">
-            Résultat de l'analyse IA de ta présentation
+            {prenom ? `Bravo ${prenom} ! ` : ""}Voici l'analyse IA de ta présentation.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Image Section */}
-          <div>
-            <Card className="overflow-hidden shadow-primary">
-              <img
-                src={resultData.image}
-                alt="Visuel professionnel généré par IA"
-                className="w-full aspect-square object-cover"
-              />
+          {/* Image + métriques */}
+          <div className="space-y-4">
+            {data.avatar_url && (
+              <Card className="overflow-hidden shadow-primary">
+                <img
+                  src={data.avatar_url}
+                  alt="Visuel généré par IA"
+                  className="w-full aspect-square object-cover"
+                />
+              </Card>
+            )}
+
+            {data.avatar_url && (
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => handleDownload(data.avatar_url!, prenom)}
+                  className="flex-1 gap-2"
+                  variant="outline"
+                >
+                  <Download className="w-4 h-4" />
+                  Télécharger
+                </Button>
+                <Button
+                  onClick={handleShare}
+                  className="flex-1 gap-2 bg-gradient-primary"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Partager
+                </Button>
+              </div>
+            )}
+
+            <Card className="p-6">
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Métriques
+                </h2>
+                <span className="text-sm text-muted-foreground">
+                  Score&nbsp;
+                  <span className="font-semibold text-foreground">
+                    {formatScore(feedback.score_global)}/10
+                  </span>
+                </span>
+              </div>
+              <dl className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Durée</dt>
+                  <dd className="text-lg font-semibold">
+                    {formatDuration(feedback.duree_secondes)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Mots</dt>
+                  <dd className="text-lg font-semibold">{feedback.nombre_mots}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Débit</dt>
+                  <dd className="text-lg font-semibold">
+                    {feedback.debit_mots_par_minute}
+                    <span className="text-xs text-muted-foreground ml-1">mpm</span>
+                  </dd>
+                </div>
+              </dl>
             </Card>
-            <div className="flex gap-3 mt-4">
-              <Button
-                onClick={handleDownload}
-                className="flex-1 gap-2"
-                variant="outline"
-              >
-                <Download className="w-4 h-4" />
-                Télécharger
-              </Button>
-              <Button
-                onClick={handleShare}
-                className="flex-1 gap-2 bg-gradient-primary"
-              >
-                <Share2 className="w-4 h-4" />
-                Partager
-              </Button>
-            </div>
           </div>
 
-          {/* Content Section */}
+          {/* Feedback */}
           <div className="space-y-6">
-            {/* Prénom */}
+            {/* Points forts */}
             <Card className="p-6">
-              <Badge className="mb-2">Prénom</Badge>
-              <p className="text-foreground text-xl font-semibold">{resultData.prenom}</p>
-            </Card>
-
-            {/* Objectif */}
-            <Card className="p-6">
-              <Badge className="mb-2">Objectif professionnel·le</Badge>
-              <p className="text-foreground">{resultData.objectif}</p>
-            </Card>
-
-            {/* Étapes */}
-            <Card className="p-6">
-              <Badge className="mb-2">Étapes du parcours</Badge>
-              <ol className="space-y-3 mt-3 list-decimal list-inside">
-                {resultData.etapes.map((etape, index) => (
-                  <li key={index} className="text-foreground pl-2 marker:text-primary marker:font-bold break-words">
-                    {etape}
+              <div className="flex items-center gap-2 mb-4">
+                <ThumbsUp className="w-5 h-5 text-success" />
+                <h2 className="text-xl font-semibold">Points forts</h2>
+              </div>
+              <ul className="space-y-4">
+                {feedback.points_forts.map((point, idx) => (
+                  <li key={idx}>
+                    <h3 className="font-semibold text-foreground mb-1">
+                      {point.titre}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {point.description}
+                    </p>
                   </li>
                 ))}
-              </ol>
+              </ul>
             </Card>
 
-            {/* Feedback AI - en bas */}
-            <Card className="p-6 bg-gradient-to-br from-accent/5 to-primary/5 border-2 border-accent/20 shadow-glow">
+            {/* Axes d'amélioration */}
+            <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-accent" />
-                <h2 className="text-xl font-semibold">Feedback coach IA</h2>
+                <Target className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-semibold">Axes d'amélioration</h2>
               </div>
-              <div className="text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-strong:font-semibold prose-strong:text-primary">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    strong: ({ children }) => (
-                      <strong className="font-semibold text-primary">{children}</strong>
-                    ),
-                    p: ({ children }) => (
-                      <p className="mb-2 last:mb-0">{children}</p>
-                    ),
-                  }}
-                >
-                  {normalizeMarkdown(resultData.feedback)}
-                </ReactMarkdown>
-              </div>
+              <ul className="space-y-5">
+                {feedback.axes_amelioration.map((axis, idx) => (
+                  <li key={idx}>
+                    <h3 className="font-semibold text-foreground mb-1">
+                      {axis.titre}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {axis.description}
+                    </p>
+                    <div className="bg-primary/5 border-l-2 border-primary rounded-r p-3">
+                      <Badge variant="outline" className="mb-2">
+                        Conseil
+                      </Badge>
+                      <p className="text-sm text-foreground">{axis.conseil}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </Card>
 
-            {/* Action */}
+            {/* Transcription */}
+            {transcription && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-accent" />
+                  <h2 className="text-xl font-semibold">Transcription</h2>
+                </div>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  {transcription}
+                </p>
+              </Card>
+            )}
+
             <Button
               onClick={() => navigate("/capture")}
               className="w-full bg-gradient-primary hover:opacity-90"
