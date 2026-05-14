@@ -48,7 +48,7 @@ const Index = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Button
-              onClick={() => navigate("/capture")}
+              onClick={() => navigate("/capture?teacher=59b37134-933c-4324-bc63-67f3214665b5&class=1a5aeef9-adca-4458-af95-98bee27099e4")}
               size="lg"
               className="gap-2 bg-gradient-primary hover:opacity-90 shadow-primary text-lg px-8 py-6"
             >
