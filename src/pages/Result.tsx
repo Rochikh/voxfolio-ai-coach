@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   AlertCircle,
   ArrowLeft,
-  Download,
   Share2,
   Sparkles,
   ThumbsUp,
@@ -168,25 +167,6 @@ const Result = () => {
     }
   };
 
-  const handleDownload = async (avatarUrl: string, prenom: string) => {
-    try {
-      const response = await fetch(avatarUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `portfolio-${prenom || "voxfolio"}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success("Image téléchargée !");
-    } catch (e) {
-      console.error(LOG_PREFIX, "download error:", e);
-      toast.error("Erreur lors du téléchargement");
-    }
-  };
-
   if (state.kind === "invalid") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
@@ -283,14 +263,6 @@ const Result = () => {
 
             {data.avatar_url && (
               <div className="flex gap-3">
-                <Button
-                  onClick={() => handleDownload(data.avatar_url!, prenom)}
-                  className="flex-1 gap-2"
-                  variant="outline"
-                >
-                  <Download className="w-4 h-4" />
-                  Télécharger
-                </Button>
                 <Button
                   onClick={handleShare}
                   className="flex-1 gap-2 bg-gradient-primary"
