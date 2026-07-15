@@ -28,6 +28,7 @@ type FeedbackAxis = { titre: string; description: string; conseil: string };
 type FeedbackJson = {
   score_global: number;
   synthese: string;
+  erreurs_techniques?: Array<{ affirmation: string; probleme: string; correction: string }>;
   points_forts: FeedbackPoint[];
   axes_amelioration: FeedbackAxis[];
   transcription_corrigee: string;
@@ -309,6 +310,31 @@ const Result = () => {
 
           {/* Feedback */}
           <div className="space-y-6">
+            {feedback.erreurs_techniques && feedback.erreurs_techniques.length > 0 && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-5 h-5 text-destructive" />
+                  <h2 className="text-xl font-semibold">Points à corriger</h2>
+                </div>
+                <ul className="space-y-5">
+                  {feedback.erreurs_techniques.map((err, idx) => (
+                    <li key={idx}>
+                      <p className="text-sm italic text-muted-foreground mb-1">
+                        « {err.affirmation} »
+                      </p>
+                      <p className="text-sm text-foreground mb-2">{err.probleme}</p>
+                      <div className="bg-destructive/5 border-l-2 border-destructive rounded-r p-3">
+                        <Badge variant="outline" className="mb-2">
+                          La bonne pratique
+                        </Badge>
+                        <p className="text-sm text-foreground">{err.correction}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
             {/* Points forts */}
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
