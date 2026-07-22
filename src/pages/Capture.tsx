@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mic, StopCircle, LayoutDashboard, AlertCircle, Loader2 } from "lucide-react";
+import { Mic, StopCircle, LayoutDashboard, AlertCircle, Loader2, QrCode, Home } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -177,13 +177,26 @@ const Capture = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
         <Card className="w-full max-w-md p-8 shadow-primary text-center">
-          <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8 text-destructive" />
+          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-6">
+            Voxfolio
+          </h1>
+          <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <QrCode className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">QR code invalide</h1>
-          <p className="text-muted-foreground">
-            Demande à ton enseignant·e de regénérer le QR code.
+          <h2 className="text-2xl font-bold mb-2">Ce lien n'est plus valide</h2>
+          <p className="text-muted-foreground mb-6">
+            Les liens d'enregistrement sont temporaires et finissent par expirer.
+            Demande à ton enseignant·e un nouveau QR code, puis scanne-le à nouveau
+            pour démarrer.
           </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/")}
+            className="gap-2"
+          >
+            <Home className="w-4 h-4" />
+            Retour à l'accueil
+          </Button>
         </Card>
       </div>
     );
