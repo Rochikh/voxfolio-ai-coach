@@ -1,5 +1,5 @@
 // Edge Function: process-submission
-// Orchestre le pipeline IA Voxfolio : Groq Whisper → OpenRouter (feedback adapté
+// Orchestre le pipeline IA Voxfolio : Groq Whisper → DeepSeek (feedback adapté
 // à la matière / consignes de la classe) → fal.ai (image), puis met à jour la
 // ligne `submissions` correspondante.
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -93,7 +93,7 @@ type ClassRow = {
   consignes_evaluation: string | null;
 };
 
-type OpenRouterFeedback = {
+type DeepSeekFeedback = {
   score_global: number;
   synthese: string;
   erreurs_techniques: Array<{ affirmation: string; probleme: string; correction: string }>;
@@ -103,7 +103,7 @@ type OpenRouterFeedback = {
   prompt_image: string;
 };
 
-type FinalFeedback = OpenRouterFeedback & {
+type FinalFeedback = DeepSeekFeedback & {
   duree_secondes: number;
   nombre_mots: number;
   debit_mots_par_minute: number;
@@ -211,19 +211,22 @@ async function transcribeWithGroq(
   return { text, duration };
 }
 
-async function generateFeedbackWithOpenRouter(
+async function generateFeedbackWithDeepSeek(
   systemPrompt: string,
   userMessage: string,
   apiKey: string,
-): Promise<OpenRouterFeedback> {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+): Promise<DeepSeekFeedback> {
+  // Modèle configurable via secret DEEPSEEK_MODEL (dashboard Supabase) pour
+  // basculer Flash ↔ Pro sans redéployer. Défaut : le plus capable.
+  const model = Deno.env.get("DEEPSEEK_MODEL") || "DeepSeek-V4-Pro";
+  const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "deepseek/deepseek-v4-flash",
+      model,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -234,26 +237,26 @@ async function generateFeedbackWithOpenRouter(
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    console.error(LOG_PREFIX, "OpenRouter error", res.status, body);
+    console.error(LOG_PREFIX, "DeepSeek error", res.status, body);
     throw new Error("Échec génération feedback");
   }
 
   const data = await res.json();
   const content: string | undefined = data?.choices?.[0]?.message?.content;
   if (!content) {
-    console.error(LOG_PREFIX, "OpenRouter: pas de content", data);
-    throw new Error("Réponse OpenRouter vide");
+    console.error(LOG_PREFIX, "DeepSeek: pas de content", data);
+    throw new Error("Réponse DeepSeek vide");
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch (err) {
-    console.error(LOG_PREFIX, "OpenRouter JSON.parse error:", err, "content=", content);
+    console.error(LOG_PREFIX, "DeepSeek JSON.parse error:", err, "content=", content);
     throw new Error("Format feedback invalide");
   }
 
-  const feedback = parsed as OpenRouterFeedback;
+  const feedback = parsed as DeepSeekFeedback;
   if (
     typeof feedback?.prompt_image !== "string" ||
     feedback.prompt_image.trim().length === 0
@@ -309,10 +312,10 @@ Deno.serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const groqKey = Deno.env.get("GROQ_API_KEY");
-  const openrouterKey = Deno.env.get("OPENROUTER_API_KEY");
+  const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
   const falKey = Deno.env.get("FAL_API_KEY");
 
-  if (!supabaseUrl || !serviceKey || !groqKey || !openrouterKey || !falKey) {
+  if (!supabaseUrl || !serviceKey || !groqKey || !deepseekKey || !falKey) {
     console.error(LOG_PREFIX, "Secrets manquants");
     return jsonResponse({ error: "Configuration serveur incomplète" }, 500);
   }
@@ -405,7 +408,7 @@ Deno.serve(async (req: Request) => {
       : transcription.trim().split(/\s+/).length;
     const debit = duration > 0 ? Math.round((nombreMots / duration) * 60) : 0;
 
-    // --- 9. Feedback OpenRouter (système prompt = matière + consignes) ----
+    // --- 9. Feedback DeepSeek (système prompt = matière + consignes) ----
     const systemPrompt = buildSystemPrompt(classe.matiere, classe.consignes_evaluation);
     const userMessage = buildUserMessage({
       transcription,
@@ -413,16 +416,16 @@ Deno.serve(async (req: Request) => {
       nombreMots,
       debit,
     });
-    const orFeedback = await generateFeedbackWithOpenRouter(systemPrompt, userMessage, openrouterKey);
-    console.log(LOG_PREFIX, "feedback OpenRouter OK, score:", orFeedback.score_global);
+    const dsFeedback = await generateFeedbackWithDeepSeek(systemPrompt, userMessage, deepseekKey);
+    console.log(LOG_PREFIX, "feedback DeepSeek OK, score:", dsFeedback.score_global);
 
     // --- 10. Image fal.ai --------------------------------------------------
-    const avatarUrl = await generateImageWithFal(orFeedback.prompt_image, falKey);
+    const avatarUrl = await generateImageWithFal(dsFeedback.prompt_image, falKey);
     console.log(LOG_PREFIX, "image générée");
 
     // --- 11. Feedback final (feedback IA + métriques) ----------------------
     const finalFeedback: FinalFeedback = {
-      ...orFeedback,
+      ...dsFeedback,
       duree_secondes: dureeSecondes,
       nombre_mots: nombreMots,
       debit_mots_par_minute: debit,
