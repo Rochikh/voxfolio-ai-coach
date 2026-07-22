@@ -12,6 +12,7 @@ import { Plus, Trash2, Users, QrCode, Download, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { TeacherNav } from '@/components/TeacherNav';
 import { QRCodeSVG } from 'qrcode.react';
+import { getPublicAppUrl } from '@/lib/appUrl';
 
 interface Classe {
   id: string;
@@ -174,7 +175,7 @@ export default function Classes() {
     setSelectedClass(classe);
     setQrType(type);
     const sessionId = crypto.randomUUID();
-    const baseUrl = window.location.origin;
+    const baseUrl = getPublicAppUrl();
 
     let url: string;
     if (type === 'capture') {

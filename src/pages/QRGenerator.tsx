@@ -9,6 +9,7 @@ import { Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { TeacherNav } from '@/components/TeacherNav';
+import { getPublicAppUrl } from '@/lib/appUrl';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Classe {
@@ -65,7 +66,7 @@ export default function QRGenerator() {
       const newSessionId = crypto.randomUUID();
       setSessionId(newSessionId);
 
-      let url = `${window.location.origin}/capture?teacher=${teacherUUID}&session=${newSessionId}`;
+      let url = `${getPublicAppUrl()}/capture?teacher=${teacherUUID}&session=${newSessionId}`;
 
       if (type === 'class' && selectedClasses.length > 0) {
         if (selectedClasses.length === 1) {
@@ -329,9 +330,7 @@ export default function QRGenerator() {
                           className="w-full justify-start"
                            onClick={() => {
                             setSelectedClasses([classe.id]);
-                            const origin = window.location.origin;
-                            const url = `${origin}/showcase?teacher=${user?.id}&class=${classe.id}`;
-                            console.log('QRGenerator showcase URL:', { origin, url });
+                            const url = `${getPublicAppUrl()}/showcase?teacher=${user?.id}&class=${classe.id}`;
                             setQrUrl(url);
                             setQrType('class');
                           }}
