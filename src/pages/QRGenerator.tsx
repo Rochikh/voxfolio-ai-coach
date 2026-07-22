@@ -21,11 +21,12 @@ export default function QRGenerator() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const [qrUrl, setQrUrl] = useState('');
+  const [showcaseUrl, setShowcaseUrl] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [airtableTeacherId, setAirtableTeacherId] = useState('');
   const [classes, setClasses] = useState<Classe[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-  const [qrType, setQrType] = useState<'teacher' | 'class'>('teacher');
+  const [qrType, setQrType] = useState<'teacher' | 'class' | 'showcase'>('teacher');
 
   useEffect(() => {
     if (!loading && !user) {
@@ -331,8 +332,8 @@ export default function QRGenerator() {
                            onClick={() => {
                             setSelectedClasses([classe.id]);
                             const url = `${getPublicAppUrl()}/showcase?teacher=${user?.id}&class=${classe.id}`;
-                            setQrUrl(url);
-                            setQrType('class');
+                            setShowcaseUrl(url);
+                            setQrType('showcase');
                           }}
                         >
                           {classe.nom}
@@ -340,12 +341,12 @@ export default function QRGenerator() {
                       ))}
                     </div>
 
-                      {qrUrl && qrType === 'class' && selectedClasses.length === 1 && (
+                      {showcaseUrl && qrType === 'showcase' && selectedClasses.length === 1 && (
                         <div className="space-y-4">
                           <div className="p-4 bg-white rounded-lg flex justify-center">
                             <QRCodeSVG
                               id="qr-code"
-                              value={qrUrl}
+                              value={showcaseUrl}
                               size={256}
                               level="H"
                               includeMargin={true}
@@ -359,13 +360,13 @@ export default function QRGenerator() {
                           </div>
                           <div className="p-3 bg-muted rounded-lg">
                             <p className="text-sm font-medium mb-1">Lien vitrine :</p>
-                            <p className="text-xs font-mono break-all">{qrUrl}</p>
+                            <p className="text-xs font-mono break-all">{showcaseUrl}</p>
                             <Button
                               size="sm"
                               className="mt-2"
                               variant="secondary"
                               onClick={() => {
-                                navigator.clipboard.writeText(qrUrl);
+                                navigator.clipboard.writeText(showcaseUrl);
                                 toast.success('Lien copié');
                               }}
                             >
