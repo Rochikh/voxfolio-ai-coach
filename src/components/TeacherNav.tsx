@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, LayoutDashboard, QrCode, Users, BookOpen, Shield, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function TeacherNav() {
   const navigate = useNavigate();
@@ -104,10 +105,13 @@ export function TeacherNav() {
             </nav>
           </div>
 
-          <Button onClick={handleSignOut} variant="outline" size="sm" className="gap-2">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Déconnexion</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button onClick={handleSignOut} variant="outline" size="sm" className="gap-2">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Déconnexion</span>
+            </Button>
+          </div>
         </div>
       </div>
     </header>

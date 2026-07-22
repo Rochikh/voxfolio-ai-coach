@@ -114,7 +114,7 @@ export default function Dashboard() {
                   ) : (
                     <div
                       className={`text-4xl font-bold ${
-                        stats.inProgress > 0 ? 'text-blue-600' : ''
+                        stats.inProgress > 0 ? 'text-primary' : ''
                       }`}
                     >
                       {stats.inProgress}

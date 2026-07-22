@@ -154,13 +154,3 @@ All colors MUST be HSL.
     animation: float 6s ease-in-out infinite;
   }
 }
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
