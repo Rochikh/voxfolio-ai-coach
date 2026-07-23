@@ -15,19 +15,46 @@ const UUID_REGEX =
 
 const MAX_RECORDING_TIME = 120; // 2 minutes
 
+type ClassOption = { id: string; nom: string };
+
 const Capture = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
-  const classId = useMemo(() => {
+  // --- Résolution de la classe depuis l'URL du QR -------------------------
+  // Trois formes d'URL produites par le générateur :
+  //   ?class=<uuid>                     → classe unique imposée (pas de choix)
+  //   ?teacher=<uuid>                   → l'élève choisit parmi TOUTES ses classes
+  //   ?teacher=<uuid>&classes=a,b,c     → choix parmi un sous-ensemble
+  //   ?teacher=<uuid>&classes=all       → équivaut à "toutes"
+  const classParam = useMemo(() => {
     const raw = searchParams.get("class");
     return raw && UUID_REGEX.test(raw) ? raw : null;
+  }, [searchParams]);
+
+  const teacherParam = useMemo(() => {
+    const raw = searchParams.get("teacher");
+    return raw && UUID_REGEX.test(raw) ? raw : null;
+  }, [searchParams]);
+
+  // null = pas de filtre (toutes les classes de l'enseignant)
+  const classesFilter = useMemo(() => {
+    const raw = searchParams.get("classes");
+    if (!raw || raw === "all") return null;
+    const ids = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => UUID_REGEX.test(s));
+    return ids.length > 0 ? ids : null;
   }, [searchParams]);
 
   const qrSessionId = searchParams.get("session");
 
   const [studentName, setStudentName] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(classParam);
+  const [classOptions, setClassOptions] = useState<ClassOption[] | null>(null);
+  const [classesLoading, setClassesLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -43,6 +70,46 @@ const Capture = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Quand aucune classe unique n'est imposée mais qu'on a un enseignant,
+  // on charge la liste des classes proposables (via la fonction publique
+  // list-classes). Une seule classe → auto-sélection, sinon on affiche un choix.
+  useEffect(() => {
+    if (classParam || !teacherParam) return;
+
+    let cancelled = false;
+    setClassesLoading(true);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("list-classes", {
+          body: {
+            teacherId: teacherParam,
+            classIds: classesFilter ?? undefined,
+          },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+
+        const list = (data as { classes?: ClassOption[] } | null)?.classes || [];
+        setClassOptions(list);
+        if (list.length === 1) {
+          setSelectedClassId(list[0].id);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          console.error("Capture: échec chargement classes:", e);
+          setClassOptions([]);
+        }
+      } finally {
+        if (!cancelled) setClassesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classParam, teacherParam, classesFilter]);
 
   const startRecording = async () => {
     try {
@@ -103,7 +170,7 @@ const Capture = () => {
       return;
     }
 
-    if (!classId) return; // unreachable: invalid-QR view returned earlier
+    if (!selectedClassId) return; // unreachable: écran de choix affiché en amont
 
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -126,7 +193,7 @@ const Capture = () => {
           contentType: audioBlob.type,
           sessionId,
           student_name: trimmedName,
-          class_id: classId,
+          class_id: selectedClassId,
         },
       });
 
@@ -173,7 +240,8 @@ const Capture = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (!classId) {
+  // --- Cas 1 : aucune info de classe exploitable → lien invalide -----------
+  if (!classParam && !teacherParam) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
         <Card className="w-full max-w-md p-8 shadow-primary text-center">
@@ -202,6 +270,78 @@ const Capture = () => {
     );
   }
 
+  // --- Cas 2 : on doit résoudre / faire choisir la classe -----------------
+  if (!selectedClassId) {
+    // Chargement en cours
+    if (classesLoading || classOptions === null) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+          <Card className="w-full max-w-md p-8 shadow-primary text-center">
+            <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-6">
+              Voxfolio
+            </h1>
+            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+            <p className="text-muted-foreground">Chargement des classes…</p>
+          </Card>
+        </div>
+      );
+    }
+
+    // Aucune classe disponible pour ce lien
+    if (classOptions.length === 0) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+          <Card className="w-full max-w-md p-8 shadow-primary text-center">
+            <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-6">
+              Voxfolio
+            </h1>
+            <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-destructive" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Aucune classe disponible</h2>
+            <p className="text-muted-foreground mb-6">
+              Ce lien ne donne accès à aucune classe. Demande à ton enseignant·e
+              un nouveau QR code.
+            </p>
+            <Button variant="outline" onClick={() => navigate("/")} className="gap-2">
+              <Home className="w-4 h-4" />
+              Retour à l'accueil
+            </Button>
+          </Card>
+        </div>
+      );
+    }
+
+    // Choix de la classe
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md p-8 shadow-primary">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
+              Voxfolio
+            </h1>
+            <p className="text-muted-foreground">Choisis ta classe pour commencer</p>
+          </div>
+          <div className="space-y-3">
+            {classOptions.map((classe) => (
+              <Button
+                key={classe.id}
+                variant="outline"
+                className="w-full justify-start h-auto py-4 text-base"
+                onClick={() => setSelectedClassId(classe.id)}
+              >
+                {classe.nom}
+              </Button>
+            ))}
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // --- Cas 3 : classe connue → interface d'enregistrement -----------------
   const canStartRecording = studentName.trim().length > 0;
   const canSubmit = !!audioBlob && canStartRecording && !isSubmitting;
 
