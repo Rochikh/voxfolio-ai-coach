@@ -218,7 +218,7 @@ async function generateFeedbackWithDeepSeek(
 ): Promise<DeepSeekFeedback> {
   // Modèle configurable via secret DEEPSEEK_MODEL (dashboard Supabase) pour
   // basculer Flash ↔ Pro sans redéployer. Défaut : le plus capable.
-  const model = Deno.env.get("DEEPSEEK_MODEL") || "DeepSeek-V4-Pro";
+  const model = Deno.env.get("DEEPSEEK_MODEL") || "deepseek-v4-pro";
   const res = await fetch("https://api.deepseek.com/chat/completions", {
     method: "POST",
     headers: {
@@ -309,16 +309,23 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Méthode non autorisée" }, 405);
   }
 
+  // SUPABASE_URL / SERVICE_ROLE_KEY sont injectés d'office par le runtime Supabase.
+  // Sans eux on ne peut NI lire NI marquer la ligne submissions : échec dur (ne
+  // devrait jamais se produire en pratique).
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) {
+    console.error(LOG_PREFIX, "Secrets Supabase de base manquants");
+    return jsonResponse({ error: "Configuration serveur incomplète" }, 500);
+  }
+
+  // Les clés des services IA (Groq / DeepSeek / fal) sont volontairement validées
+  // PLUS BAS, une fois la ligne submissions lue (rowExists). Ainsi une clé absente
+  // ou renommée bascule la ligne en `error` (message visible côté élève) au lieu
+  // de la laisser figée à `pending` → plus jamais de spinner infini côté serveur.
   const groqKey = Deno.env.get("GROQ_API_KEY");
   const deepseekKey = Deno.env.get("DEEPSEEK_API_KEY");
   const falKey = Deno.env.get("FAL_API_KEY");
-
-  if (!supabaseUrl || !serviceKey || !groqKey || !deepseekKey || !falKey) {
-    console.error(LOG_PREFIX, "Secrets manquants");
-    return jsonResponse({ error: "Configuration serveur incomplète" }, 500);
-  }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },
@@ -356,6 +363,22 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Submission introuvable" }, 404);
     }
     rowExists = true;
+
+    // --- 1bis. Validation des clés services IA ----------------------------
+    // Placée APRÈS rowExists : une clé manquante lève une erreur qui, via le
+    // catch, marque la ligne en `error`. Empêche le spinner infini quand un
+    // secret est absent ou a été renommé (ex. migration OpenRouter → DeepSeek).
+    {
+      const missing = [
+        !groqKey && "GROQ_API_KEY",
+        !deepseekKey && "DEEPSEEK_API_KEY",
+        !falKey && "FAL_API_KEY",
+      ].filter(Boolean) as string[];
+      if (missing.length > 0) {
+        console.error(LOG_PREFIX, "Clés IA manquantes:", missing.join(", "));
+        throw new Error(`Configuration serveur incomplète (${missing.join(", ")})`);
+      }
+    }
 
     // --- 2. Lecture classe (matière + consignes) --------------------------
     const { data: classe, error: classErr } = await supabase
@@ -398,7 +421,7 @@ Deno.serve(async (req: Request) => {
     console.log(LOG_PREFIX, "audio téléchargé", filename, blob.size, "octets");
 
     // --- 7. Transcription Groq --------------------------------------------
-    const { text: transcription, duration } = await transcribeWithGroq(blob, filename, groqKey);
+    const { text: transcription, duration } = await transcribeWithGroq(blob, filename, groqKey!);
     console.log(LOG_PREFIX, "transcription OK", duration, "s");
 
     // --- 8. Métriques locales ---------------------------------------------
@@ -416,11 +439,11 @@ Deno.serve(async (req: Request) => {
       nombreMots,
       debit,
     });
-    const dsFeedback = await generateFeedbackWithDeepSeek(systemPrompt, userMessage, deepseekKey);
+    const dsFeedback = await generateFeedbackWithDeepSeek(systemPrompt, userMessage, deepseekKey!);
     console.log(LOG_PREFIX, "feedback DeepSeek OK, score:", dsFeedback.score_global);
 
     // --- 10. Image fal.ai --------------------------------------------------
-    const avatarUrl = await generateImageWithFal(dsFeedback.prompt_image, falKey);
+    const avatarUrl = await generateImageWithFal(dsFeedback.prompt_image, falKey!);
     console.log(LOG_PREFIX, "image générée");
 
     // --- 11. Feedback final (feedback IA + métriques) ----------------------

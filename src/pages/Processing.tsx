@@ -10,6 +10,10 @@ const UUID_REGEX =
 
 const POLL_INTERVAL_MS = 2000;
 const SLOW_TIMEOUT_MS = 90_000;
+// Garde-fou dur : au-delà de ce délai on cesse de tourner indéfiniment et on
+// affiche une vraie erreur actionnable, même si la ligne submissions est restée
+// bloquée à `pending`/`processing` (ex. fonction serveur interrompue).
+const HARD_TIMEOUT_MS = 240_000;
 const ROTATING_MESSAGE_INTERVAL_MS = 3500;
 const DONE_REDIRECT_DELAY_MS = 500;
 
@@ -50,6 +54,9 @@ const Processing = () => {
     submissionId ? { kind: "loading" } : { kind: "invalid" },
   );
   const [messageIndex, setMessageIndex] = useState(0);
+  // Dernière class_id vue pendant le polling : sert à proposer le bon lien de
+  // reprise si le garde-fou dur bascule en erreur.
+  const lastClassIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!submissionId) return;
@@ -57,6 +64,7 @@ const Processing = () => {
     let cancelled = false;
     let pollHandle: ReturnType<typeof setInterval> | null = null;
     let slowHandle: ReturnType<typeof setTimeout> | null = null;
+    let hardHandle: ReturnType<typeof setTimeout> | null = null;
     let doneRedirectHandle: ReturnType<typeof setTimeout> | null = null;
 
     console.log(LOG_PREFIX, "start polling", submissionId);
@@ -82,12 +90,15 @@ const Processing = () => {
         }
 
         console.log(LOG_PREFIX, "tick status:", payload.status);
+        lastClassIdRef.current = payload.class_id;
 
         if (payload.status === "done") {
           if (pollHandle) clearInterval(pollHandle);
           pollHandle = null;
           if (slowHandle) clearTimeout(slowHandle);
           slowHandle = null;
+          if (hardHandle) clearTimeout(hardHandle);
+          hardHandle = null;
           setUiState({ kind: "done" });
           doneRedirectHandle = setTimeout(() => {
             if (!cancelled) {
@@ -103,6 +114,8 @@ const Processing = () => {
           pollHandle = null;
           if (slowHandle) clearTimeout(slowHandle);
           slowHandle = null;
+          if (hardHandle) clearTimeout(hardHandle);
+          hardHandle = null;
           setUiState({
             kind: "error",
             message: payload.error?.trim() || "Une erreur est survenue.",
@@ -111,11 +124,14 @@ const Processing = () => {
           return;
         }
 
-        // pending | processing : continuer le polling, conserver le flag slow
+        // pending | processing : continuer le polling, conserver le flag slow.
+        // Les cas done/error ont déjà `return` plus haut, donc le statut restant
+        // ne peut être que pending | processing.
+        const workingStatus = payload.status as "pending" | "processing";
         setUiState((prev) =>
           prev.kind === "working"
-            ? { kind: "working", status: payload.status, slow: prev.slow }
-            : { kind: "working", status: payload.status, slow: false },
+            ? { kind: "working", status: workingStatus, slow: prev.slow }
+            : { kind: "working", status: workingStatus, slow: false },
         );
       } catch (e) {
         if (!cancelled) {
@@ -136,10 +152,28 @@ const Processing = () => {
       );
     }, SLOW_TIMEOUT_MS);
 
+    // Garde-fou dur : si aucun statut terminal n'arrive, on arrête de tourner et
+    // on affiche une erreur actionnable plutôt qu'un spinner sans fin.
+    hardHandle = setTimeout(() => {
+      if (cancelled) return;
+      if (pollHandle) clearInterval(pollHandle);
+      pollHandle = null;
+      if (slowHandle) clearTimeout(slowHandle);
+      slowHandle = null;
+      console.error(LOG_PREFIX, "hard timeout atteint — arrêt du polling");
+      setUiState({
+        kind: "error",
+        message:
+          "Le traitement a pris trop de temps et semble avoir été interrompu. Réessaie l'enregistrement.",
+        classId: lastClassIdRef.current,
+      });
+    }, HARD_TIMEOUT_MS);
+
     return () => {
       cancelled = true;
       if (pollHandle) clearInterval(pollHandle);
       if (slowHandle) clearTimeout(slowHandle);
+      if (hardHandle) clearTimeout(hardHandle);
       if (doneRedirectHandle) clearTimeout(doneRedirectHandle);
       console.log(LOG_PREFIX, "cleanup", submissionId);
     };
